@@ -15,105 +15,160 @@ function makeSlide(template = 'blank', theme = 'default') {
   const slide = { id: uid('slide'), background: theme === 'dark' ? '#1a1a1a' : '#ffffff', elements: [] };
   const textColor = theme === 'dark' ? '#ffffff' : '#111111';
   if (template === 'title') {
-    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 100, w: 600, h: 80, rotation: 0, styles: { fontSize: 36, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left' }, content: 'Title' });
-    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 200, w: 600, h: 40, rotation: 0, styles: { fontSize: 20, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left' }, content: 'Subtitle' });
+    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 100, w: 600, h: 80, rotation: 0, styles: { fontSize: 36, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: 'Title' });
+    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 200, w: 600, h: 40, rotation: 0, styles: { fontSize: 20, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: 'Subtitle' });
   } else if (template === 'titleContent') {
-    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 60, w: 600, h: 60, rotation: 0, styles: { fontSize: 32, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left' }, content: 'Title' });
-    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 150, w: 600, h: 280, rotation: 0, styles: { fontSize: 18, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left' }, content: '• Point 1\n• Point 2\n• Point 3' });
+    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 60, w: 600, h: 60, rotation: 0, styles: { fontSize: 32, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: 'Title' });
+    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 150, w: 600, h: 280, rotation: 0, styles: { fontSize: 18, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: '• Point 1\n• Point 2\n• Point 3' });
   }
   return slide;
 }
 
-// Toolbar with all controls
-function Toolbar({ onAddSlide, onAddText, onAddImage, onAddChart, onAddShape, onDeleteElement, onChangeProp, selectedElement, onSave, onLoad, onExport, presentationName, setPresentationName, onUndo, onRedo, canUndo, canRedo, onChangeBackground, currentSlide, onEditChart }) {
+// Compact Toolbar with icon-based tabs
+function Toolbar({ onAddSlide, onAddText, onAddImage, onAddChart, onAddShape, onDeleteElement, onChangeProp, selectedElement, onSave, onLoad, onExport, onShare, onPresent, presentationName, setPresentationName, onUndo, onRedo, canUndo, canRedo, onChangeBackground, currentSlide, onEditChart }) {
   const fileRef = useRef();
+  const [activeTab, setActiveTab] = useState('file');
   const isText = selectedElement?.type === 'text';
   const isShape = selectedElement?.type === 'shape';
   const isChart = selectedElement?.type === 'chart';
+  
   return (
-    <div className="toolbar">
-      <div className="tool-row" style={{ borderBottom: '2px solid #e1e4e8', paddingBottom: '12px' }}>
-        <div style={{ fontSize: '18px', fontWeight: '700', background: 'linear-gradient(135deg, #667eea, #764ba2)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginRight: '12px' }}>📊 PPT Maker</div>
-        <input className="name-input" value={presentationName} onChange={e=>setPresentationName(e.target.value)} placeholder="Untitled Presentation" />
-        <button onClick={onSave} title="Save presentation">💾 Save</button>
-        <button onClick={onLoad} title="Load presentation">📂 Load</button>
-        <button onClick={onExport} title="Export to PowerPoint">📤 Export</button>
-        <button onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">↶ Undo</button>
-        <button onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">↷ Redo</button>
-      </div>
-      <div className="tool-row">
-        <label style={{ fontSize: '11px', color: '#9ca3af' }}>Slides</label>
-        <button onClick={()=>onAddSlide('title')} title="Add title slide">➕ Title</button>
-        <button onClick={()=>onAddSlide('titleContent')} title="Add title + content slide">➕ Title+Content</button>
-        <button onClick={()=>onAddSlide('blank')} title="Add blank slide">➕ Blank</button>
-        <div style={{ width: '1px', height: '24px', background: '#d1d5db', margin: '0 4px' }}></div>
-        <label style={{ fontSize: '11px', color: '#9ca3af' }}>Background</label>
-        <input type="color" value={currentSlide?.background || '#ffffff'} onChange={e=>onChangeBackground(e.target.value)} title="Slide background color" />
-      </div>
-      <div className="tool-row">
-        <label style={{ fontSize: '11px', color: '#9ca3af' }}>Elements</label>
-        <button onClick={onAddText} title="Add text box">📝 Text</button>
-        <button onClick={()=>fileRef.current && fileRef.current.click()} title="Upload image">🖼 Image</button>
-        <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={(e)=>{
-          const f = e.target.files && e.target.files[0];
-          if (!f) return;
-          const reader = new FileReader();
-          reader.onload = () => onAddImage(reader.result);
-          reader.readAsDataURL(f);
-          e.target.value = '';
-        }} />
-        <div style={{ width: '1px', height: '24px', background: '#d1d5db', margin: '0 4px' }}></div>
-        <label style={{ fontSize: '11px', color: '#9ca3af' }}>Charts</label>
-        <button onClick={()=>onAddChart('bar')} title="Add bar chart">📊 Bar</button>
-        <button onClick={()=>onAddChart('line')} title="Add line chart">📈 Line</button>
-        <button onClick={()=>onAddChart('pie')} title="Add pie chart">🥧 Pie</button>
-        <div style={{ width: '1px', height: '24px', background: '#d1d5db', margin: '0 4px' }}></div>
-        <label style={{ fontSize: '11px', color: '#9ca3af' }}>Shapes</label>
-        <button onClick={()=>onAddShape('rect')} title="Add rectangle">▭ Rect</button>
-        <button onClick={()=>onAddShape('circle')} title="Add circle">⬤ Circle</button>
-        <button onClick={()=>onAddShape('line')} title="Add line">─ Line</button>
-      </div>
-      {selectedElement && (
-        <div className="tool-row" style={{ background: 'linear-gradient(to right, #f0f4ff, #fef3f8)', padding: '8px', borderRadius: '6px', border: '1px solid #e1e4e8' }}>
-          <label style={{ fontSize: '11px', color: '#667eea', fontWeight: '700' }}>✨ Selected: {selectedElement.type.toUpperCase()}</label>
-          {isText && (
-            <>
-              <div style={{ width: '1px', height: '24px', background: '#d1d5db', margin: '0 4px' }}></div>
-              <button onClick={()=>onChangeProp('fontWeight', selectedElement.styles?.fontWeight==='bold'?'normal':'bold')} className={selectedElement.styles?.fontWeight==='bold'?'active':''} title="Bold" style={{ fontWeight: 'bold' }}>B</button>
-              <button onClick={()=>onChangeProp('fontStyle', selectedElement.styles?.fontStyle==='italic'?'normal':'italic')} className={selectedElement.styles?.fontStyle==='italic'?'active':''} title="Italic" style={{ fontStyle: 'italic' }}>I</button>
-              <button onClick={()=>onChangeProp('textDecoration', selectedElement.styles?.textDecoration==='underline'?'none':'underline')} className={selectedElement.styles?.textDecoration==='underline'?'active':''} title="Underline" style={{ textDecoration: 'underline' }}>U</button>
-              <div style={{ width: '1px', height: '24px', background: '#d1d5db', margin: '0 4px' }}></div>
-              <button onClick={()=>onChangeProp('textAlign','left')} className={selectedElement.styles?.textAlign==='left'?'active':''} title="Align left">⬅</button>
-              <button onClick={()=>onChangeProp('textAlign','center')} className={selectedElement.styles?.textAlign==='center'?'active':''} title="Align center">⬌</button>
-              <button onClick={()=>onChangeProp('textAlign','right')} className={selectedElement.styles?.textAlign==='right'?'active':''} title="Align right">➡</button>
-              <div style={{ width: '1px', height: '24px', background: '#d1d5db', margin: '0 4px' }}></div>
-              <label>Size</label>
-              <input type="number" min="8" max="96" value={selectedElement.styles?.fontSize || 18} onChange={e=>onChangeProp('fontSize', parseInt(e.target.value||'18',10))} title="Font size" />
-              <label>Color</label>
-              <input type="color" value={selectedElement.styles?.color || '#111111'} onChange={e=>onChangeProp('color', e.target.value)} title="Text color" />
-            </>
-          )}
-          {isShape && (
-            <>
-              <div style={{ width: '1px', height: '24px', background: '#d1d5db', margin: '0 4px' }}></div>
-              <label>Fill</label>
-              <input type="color" value={selectedElement.fill || '#4e79a7'} onChange={e=>onChangeProp('fill', e.target.value)} title="Fill color" />
-              <label>Stroke</label>
-              <input type="color" value={selectedElement.stroke || '#000000'} onChange={e=>onChangeProp('stroke', e.target.value)} title="Stroke color" />
-              <label>Width</label>
-              <input type="number" min="0" max="20" value={selectedElement.strokeWidth || 2} onChange={e=>onChangeProp('strokeWidth', parseInt(e.target.value||'2',10))} title="Stroke width" />
-            </>
-          )}
-          {isChart && (
-            <>
-              <div style={{ width: '1px', height: '24px', background: '#d1d5db', margin: '0 4px' }}></div>
-              <button onClick={onEditChart} title="Edit chart data">✏ Edit Chart Data</button>
-            </>
-          )}
-          <div style={{ width: '1px', height: '24px', background: '#d1d5db', margin: '0 4px' }}></div>
-          <button onClick={onDeleteElement} title="Delete element (Del)" style={{ background: 'linear-gradient(to bottom, #fee, #fdd)', borderColor: '#fcc', color: '#c33' }}>🗑 Delete</button>
+    <div className="toolbar-compact">
+      {/* Top bar with tabs and presentation name */}
+      <div className="toolbar-header">
+        <div className="toolbar-tabs">
+          <div className={`toolbar-tab ${activeTab==='file'?'active':''}`} onClick={()=>setActiveTab('file')}>📁 File</div>
+          <div className={`toolbar-tab ${activeTab==='insert'?'active':''}`} onClick={()=>setActiveTab('insert')}>➕ Insert</div>
+          <div className={`toolbar-tab ${activeTab==='design'?'active':''}`} onClick={()=>setActiveTab('design')}>🎨 Design</div>
+          {selectedElement && <div className={`toolbar-tab ${activeTab==='format'?'active':''}`} onClick={()=>setActiveTab('format')}>✨ Format</div>}
         </div>
-      )}
+        <input className="name-input-compact" value={presentationName} onChange={e=>setPresentationName(e.target.value)} placeholder="Untitled" />
+        <button className="present-btn" onClick={onPresent} title="Present slideshow">▶️</button>
+      </div>
+      
+      {/* Tab content */}
+      <div className="toolbar-content">
+        {activeTab === 'file' && (
+          <div className="toolbar-group">
+            <div className="tool-section">
+              <button onClick={onSave} title="Save">💾</button>
+              <button onClick={onLoad} title="Load">📂</button>
+              <button onClick={onExport} title="Export">📤</button>
+              <button onClick={onShare} title="Share">🔗</button>
+            </div>
+            <div className="tool-divider"></div>
+            <div className="tool-section">
+              <button onClick={onUndo} disabled={!canUndo} title="Undo">↶</button>
+              <button onClick={onRedo} disabled={!canRedo} title="Redo">↷</button>
+            </div>
+          </div>
+        )}
+        
+        {activeTab === 'insert' && (
+          <div className="toolbar-group">
+            <div className="tool-section">
+              <label className="section-label">Slides</label>
+              <button onClick={()=>onAddSlide('title')} title="Title slide">📄</button>
+              <button onClick={()=>onAddSlide('titleContent')} title="Title + Content">📋</button>
+              <button onClick={()=>onAddSlide('blank')} title="Blank slide">⬜</button>
+            </div>
+            <div className="tool-divider"></div>
+            <div className="tool-section">
+              <label className="section-label">Elements</label>
+              <button onClick={onAddText} title="Text box">📝</button>
+              <button onClick={()=>fileRef.current && fileRef.current.click()} title="Image">🖼️</button>
+              <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={(e)=>{
+                const f = e.target.files && e.target.files[0];
+                if (!f) return;
+                const reader = new FileReader();
+                reader.onload = () => onAddImage(reader.result);
+                reader.readAsDataURL(f);
+                e.target.value = '';
+              }} />
+            </div>
+            <div className="tool-divider"></div>
+            <div className="tool-section">
+              <label className="section-label">Charts</label>
+              <button onClick={()=>onAddChart('bar')} title="Bar chart">📊</button>
+              <button onClick={()=>onAddChart('line')} title="Line chart">📈</button>
+              <button onClick={()=>onAddChart('pie')} title="Pie chart">🥧</button>
+            </div>
+            <div className="tool-divider"></div>
+            <div className="tool-section">
+              <label className="section-label">Shapes</label>
+              <button onClick={()=>onAddShape('rect')} title="Rectangle">▭</button>
+              <button onClick={()=>onAddShape('circle')} title="Circle">⬤</button>
+              <button onClick={()=>onAddShape('line')} title="Line">─</button>
+            </div>
+          </div>
+        )}
+        
+        {activeTab === 'design' && (
+          <div className="toolbar-group">
+            <div className="tool-section">
+              <label className="section-label">Background</label>
+              <input type="color" value={currentSlide?.background || '#ffffff'} onChange={e=>onChangeBackground(e.target.value)} title="Slide background" />
+            </div>
+          </div>
+        )}
+        
+        {activeTab === 'format' && selectedElement && (
+          <div className="toolbar-group">
+            {isText && (
+              <>
+                <div className="tool-section">
+                  <label className="section-label">Text Style</label>
+                  <button onClick={()=>onChangeProp('fontWeight', selectedElement.styles?.fontWeight==='bold'?'normal':'bold')} className={selectedElement.styles?.fontWeight==='bold'?'active':''} title="Bold" style={{ fontWeight: 'bold' }}>B</button>
+                  <button onClick={()=>onChangeProp('fontStyle', selectedElement.styles?.fontStyle==='italic'?'normal':'italic')} className={selectedElement.styles?.fontStyle==='italic'?'active':''} title="Italic" style={{ fontStyle: 'italic' }}>I</button>
+                  <button onClick={()=>onChangeProp('textDecoration', selectedElement.styles?.textDecoration==='underline'?'none':'underline')} className={selectedElement.styles?.textDecoration==='underline'?'active':''} title="Underline" style={{ textDecoration: 'underline' }}>U</button>
+                </div>
+                <div className="tool-divider"></div>
+                <div className="tool-section">
+                  <label className="section-label">Align</label>
+                  <button onClick={()=>onChangeProp('textAlign','left')} className={selectedElement.styles?.textAlign==='left'?'active':''} title="Left">⬅</button>
+                  <button onClick={()=>onChangeProp('textAlign','center')} className={selectedElement.styles?.textAlign==='center'?'active':''} title="Center">⬌</button>
+                  <button onClick={()=>onChangeProp('textAlign','right')} className={selectedElement.styles?.textAlign==='right'?'active':''} title="Right">➡</button>
+                </div>
+                <div className="tool-divider"></div>
+                <div className="tool-section">
+                  <label className="section-label">Font</label>
+                  <input type="number" min="8" max="96" value={selectedElement.styles?.fontSize || 18} onChange={e=>onChangeProp('fontSize', parseInt(e.target.value||'18',10))} title="Size" style={{ width: '50px' }} />
+                  <input type="color" value={selectedElement.styles?.color || '#111111'} onChange={e=>onChangeProp('color', e.target.value)} title="Color" />
+                  <select value={selectedElement.styles?.fontFamily || 'Arial'} onChange={e=>onChangeProp('fontFamily', e.target.value)} title="Font" style={{ width: '100px' }}>
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times</option>
+                    <option value="Courier New">Courier</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Comic Sans MS">Comic</option>
+                    <option value="Impact">Impact</option>
+                    <option value="Trebuchet MS">Trebuchet</option>
+                    <option value="Palatino">Palatino</option>
+                    <option value="Garamond">Garamond</option>
+                  </select>
+                </div>
+              </>
+            )}
+            {isShape && (
+              <div className="tool-section">
+                <label className="section-label">Shape Style</label>
+                <input type="color" value={selectedElement.fill || '#4e79a7'} onChange={e=>onChangeProp('fill', e.target.value)} title="Fill" />
+                <input type="color" value={selectedElement.stroke || '#000000'} onChange={e=>onChangeProp('stroke', e.target.value)} title="Stroke" />
+                <input type="number" min="0" max="20" value={selectedElement.strokeWidth || 2} onChange={e=>onChangeProp('strokeWidth', parseInt(e.target.value||'2',10))} title="Width" style={{ width: '50px' }} />
+              </div>
+            )}
+            {isChart && (
+              <div className="tool-section">
+                <button onClick={onEditChart} title="Edit data">✏️ Edit Data</button>
+              </div>
+            )}
+            <div className="tool-divider"></div>
+            <div className="tool-section">
+              <button onClick={onDeleteElement} title="Delete" className="delete-btn">🗑️</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -200,6 +255,7 @@ function Canvas({ slide, selectedElementId, onSelect, onChangeText, onDragStart,
                 fontStyle: el.styles?.fontStyle,
                 textDecoration: el.styles?.textDecoration,
                 textAlign: el.styles?.textAlign,
+                fontFamily: el.styles?.fontFamily || 'Arial',
               }} />
               {selected && <ResizeHandles onResizeStart={(dir)=>onResizeStart(el.id, dir)} />}
               {selected && <DragHandle onDragStart={()=>onDragStart(el.id)} />}
@@ -347,11 +403,31 @@ function App() {
   const [historyIndex, setHistoryIndex] = useState(0);
   const [showLoad, setShowLoad] = useState(false);
   const [showChartEditor, setShowChartEditor] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [presentMode, setPresentMode] = useState(false);
   const [dragging, setDragging] = useState(null);
   const [resizing, setResizing] = useState(null);
   
   const selectedSlide = presentation.slides[currentSlide];
   const selectedElement = selectedSlide?.elements.find(e=>e.id===selectedElementId) || null;
+
+  // Load presentation from URL query parameter on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const presentationId = params.get('presentation');
+    if (presentationId) {
+      fetch('/api/presentations/'+encodeURIComponent(presentationId))
+        .then(r=>r.json())
+        .then(data=>{
+          setPresentation(data);
+          setCurrentSlide(0);
+          setSelectedElementId(null);
+          setHistory([JSON.stringify(data)]);
+          setHistoryIndex(0);
+        })
+        .catch(()=> console.error('Failed to load shared presentation'));
+    }
+  }, []);
 
   function saveHistory(newPresentation) {
     const serialized = JSON.stringify(newPresentation);
@@ -528,7 +604,7 @@ function App() {
 
   function onAddText() {
     updatePresentation(p => {
-      const el = { id: uid('el'), type: 'text', x: 80, y: 120, w: 400, h: 80, rotation: 0, styles: { fontSize: 20, color: '#111111', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left' }, content: 'Text' };
+      const el = { id: uid('el'), type: 'text', x: 80, y: 120, w: 400, h: 80, rotation: 0, styles: { fontSize: 20, color: '#111111', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: 'Text' };
       p.slides[currentSlide].elements.push(el);
       setSelectedElementId(el.id);
     });
@@ -634,36 +710,104 @@ function App() {
       .catch(()=> alert('Load failed'));
   }
 
+  function onShare() {
+    if (!presentation.id) {
+      alert('Please save the presentation first before sharing.');
+      return;
+    }
+    setShowShareDialog(true);
+  }
+
+  function onPresent() {
+    setPresentMode(true);
+    setSelectedElementId(null);
+  }
+
   function onExport() {
-    const pptx = new PptxGenJS();
-    presentation.slides.forEach(sl => {
-      const slide = pptx.addSlide();
-      slide.background = { color: (sl.background || '#ffffff').replace('#','') };
-      sl.elements.forEach(el => {
-        if (el.type === 'text') {
-          slide.addText(el.content || '', { x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96, fontSize: el.styles?.fontSize || 18, color: (el.styles?.color||'#111111').replace('#',''), bold: el.styles?.fontWeight==='bold', italic: el.styles?.fontStyle==='italic', underline: el.styles?.textDecoration==='underline', align: el.styles?.textAlign || 'left' });
-        } else if (el.type === 'image') {
-          slide.addImage({ data: el.src, x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96 });
-        } else if (el.type === 'chart') {
-          const labels = el.data?.labels || [];
-          const datasets = el.data?.datasets || [];
-          if (el.chartType === 'pie') {
-            const data = datasets[0] ? datasets[0].values.map((v,i)=>({ name: labels[i]||'', labels:[labels[i]||''], values:[v] })) : [];
-            slide.addChart(pptx.ChartType.pie, data, { x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96 });
-          } else {
-            const series = datasets.map(ds => ({ name: ds.label, labels, values: ds.values }));
-            const chartType = el.chartType === 'line' ? pptx.ChartType.line : pptx.ChartType.bar;
-            slide.addChart(chartType, series, { x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96, barDir: 'col', chartColors: datasets.map(ds=>(ds.color||'#4e79a7').replace('#','')) });
+    try {
+      const pptx = new PptxGenJS();
+      pptx.layout = 'LAYOUT_WIDE';
+      pptx.author = 'PPT Maker';
+      pptx.title = presentation.name || 'Presentation';
+      
+      presentation.slides.forEach(sl => {
+        const slide = pptx.addSlide();
+        slide.background = { color: (sl.background || '#ffffff').replace('#','') };
+        sl.elements.forEach(el => {
+          try {
+            if (el.type === 'text') {
+              const textOptions = {
+                x: el.x/96,
+                y: el.y/96,
+                w: el.w/96,
+                h: el.h/96,
+                fontSize: el.styles?.fontSize || 18,
+                color: (el.styles?.color||'#111111').replace('#',''),
+                bold: el.styles?.fontWeight==='bold',
+                italic: el.styles?.fontStyle==='italic',
+                underline: el.styles?.textDecoration==='underline' ? { style: 'sng' } : false,
+                align: el.styles?.textAlign || 'left',
+                fontFace: el.styles?.fontFamily || 'Arial',
+                valign: 'top'
+              };
+              slide.addText(el.content || '', textOptions);
+            } else if (el.type === 'image') {
+              slide.addImage({ data: el.src, x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96 });
+            } else if (el.type === 'chart') {
+              const labels = el.data?.labels || [];
+              const datasets = el.data?.datasets || [];
+              if (el.chartType === 'pie' && datasets.length > 0) {
+                const data = datasets[0].values.map((v,i)=>({ name: labels[i]||'Item '+(i+1), labels:[labels[i]||'Item '+(i+1)], values:[v] }));
+                slide.addChart(pptx.ChartType.pie, data, { x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96, showTitle: false });
+              } else if (datasets.length > 0) {
+                const chartData = datasets.map(ds => ({ name: ds.label, labels, values: ds.values }));
+                const chartType = el.chartType === 'line' ? pptx.ChartType.line : pptx.ChartType.bar;
+                slide.addChart(chartType, chartData, { 
+                  x: el.x/96, 
+                  y: el.y/96, 
+                  w: el.w/96, 
+                  h: el.h/96, 
+                  barDir: 'col',
+                  showTitle: false,
+                  chartColors: datasets.map(ds=>(ds.color||'#4e79a7').replace('#',''))
+                });
+              }
+            } else if (el.type === 'shape') {
+              const opts = { 
+                x: el.x/96, 
+                y: el.y/96, 
+                w: el.w/96, 
+                h: el.h/96, 
+                fill: { color: (el.fill||'#4e79a7').replace('#','') }, 
+                line: { color: (el.stroke||'#000').replace('#',''), width: (el.strokeWidth||2)/12 } 
+              };
+              if (el.shapeType === 'rect') slide.addShape(pptx.shapes.RECTANGLE, opts);
+              else if (el.shapeType === 'circle') slide.addShape(pptx.shapes.OVAL, opts);
+              else if (el.shapeType === 'line') {
+                slide.addShape(pptx.shapes.LINE, { 
+                  x: el.x/96, 
+                  y: el.y/96, 
+                  w: el.w/96, 
+                  h: 0,
+                  line: { color: (el.stroke||'#000').replace('#',''), width: (el.strokeWidth||2)/12 } 
+                });
+              }
+            }
+          } catch (err) {
+            console.error('Error adding element to slide:', err);
           }
-        } else if (el.type === 'shape') {
-          const opts = { x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96, fill: { color: (el.fill||'#4e79a7').replace('#','') }, line: { color: (el.stroke||'#000').replace('#',''), width: el.strokeWidth||2 } };
-          if (el.shapeType === 'rect') slide.addShape(pptx.ShapeType.rect, opts);
-          else if (el.shapeType === 'circle') slide.addShape(pptx.ShapeType.ellipse, opts);
-          else if (el.shapeType === 'line') slide.addShape(pptx.ShapeType.line, { ...opts, line: { color: (el.stroke||'#000').replace('#',''), width: (el.strokeWidth||2)*2 } });
-        }
+        });
       });
-    });
-    pptx.writeFile({ fileName: (presentation.name || 'Presentation') + '.pptx' });
+      pptx.writeFile({ fileName: (presentation.name || 'Presentation') + '.pptx' });
+      alert('Presentation exported successfully!');
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Export failed: ' + err.message);
+    }
+  }
+
+  if (presentMode) {
+    return <PresentationMode presentation={presentation} currentSlide={currentSlide} setCurrentSlide={setCurrentSlide} onExit={()=>setPresentMode(false)} />;
   }
 
   return (
@@ -680,6 +824,8 @@ function App() {
         onSave={onSave}
         onLoad={onLoad}
         onExport={onExport}
+        onShare={onShare}
+        onPresent={onPresent}
         presentationName={presentation.name}
         setPresentationName={(name)=> setPresentation(prev=> ({...prev, name}))}
         onUndo={onUndo}
@@ -752,6 +898,131 @@ function App() {
           setShowChartEditor(false);
         }} onClose={()=> setShowChartEditor(false)} />
       )}
+      {showShareDialog && <ShareDialog presentationId={presentation.id} onClose={()=>setShowShareDialog(false)} />}
+    </div>
+  );
+}
+
+function ShareDialog({ presentationId, onClose }) {
+  const shareUrl = `${window.location.origin}?presentation=${presentationId}`;
+  const [copied, setCopied] = useState(false);
+  
+  function copyToClipboard() {
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+  
+  return (
+    <div className="modal">
+      <div className="modal-body">
+        <h3>Share Presentation</h3>
+        <p style={{ color: '#6b7280', marginBottom: '16px' }}>Share this link with others to view your presentation:</p>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <input 
+            readOnly 
+            value={shareUrl} 
+            style={{ flex: 1, padding: '10px', border: '2px solid #e1e4e8', borderRadius: '6px', fontSize: '14px', background: '#f9fafb' }}
+            onClick={(e) => e.target.select()}
+          />
+          <button onClick={copyToClipboard} style={{ padding: '10px 20px' }}>
+            {copied ? '✓ Copied!' : '📋 Copy'}
+          </button>
+        </div>
+        <div className="actions">
+          <button onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PresentationMode({ presentation, currentSlide, setCurrentSlide, onExit }) {
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        onExit();
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        if (currentSlide < presentation.slides.length - 1) {
+          setCurrentSlide(currentSlide + 1);
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+        e.preventDefault();
+        if (currentSlide > 0) {
+          setCurrentSlide(currentSlide - 1);
+        }
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setCurrentSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        setCurrentSlide(presentation.slides.length - 1);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentSlide, presentation.slides.length, onExit, setCurrentSlide]);
+  
+  const slide = presentation.slides[currentSlide];
+  if (!slide) return null;
+  
+  return (
+    <div className="presentation-mode">
+      <div className="presentation-slide" style={{ background: slide.background }}>
+        {slide.elements.map(el => {
+          const style = { left: el.x, top: el.y, width: el.w, height: el.h, transform: `rotate(${el.rotation||0}deg)` };
+          if (el.type === 'text') {
+            return (
+              <div key={el.id} className="present-text-el" style={{
+                ...style,
+                fontSize: el.styles?.fontSize,
+                color: el.styles?.color,
+                fontWeight: el.styles?.fontWeight,
+                fontStyle: el.styles?.fontStyle,
+                textDecoration: el.styles?.textDecoration,
+                textAlign: el.styles?.textAlign,
+                fontFamily: el.styles?.fontFamily || 'Arial',
+                whiteSpace: 'pre-wrap',
+                padding: '4px',
+              }}>
+                {el.content}
+              </div>
+            );
+          }
+          if (el.type === 'image') {
+            return (
+              <div key={el.id} style={style}>
+                <img src={el.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              </div>
+            );
+          }
+          if (el.type === 'chart') {
+            return (
+              <div key={el.id} style={style}>
+                <ChartElement element={el} />
+              </div>
+            );
+          }
+          if (el.type === 'shape') {
+            return (
+              <div key={el.id} style={style}>
+                <ShapeElement element={el} />
+              </div>
+            );
+          }
+          return null;
+        })}
+      </div>
+      <div className="presentation-controls">
+        <button onClick={onExit} title="Exit (Esc)">✕ Exit</button>
+        <span className="slide-counter">{currentSlide + 1} / {presentation.slides.length}</span>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => currentSlide > 0 && setCurrentSlide(currentSlide - 1)} disabled={currentSlide === 0}>← Previous</button>
+          <button onClick={() => currentSlide < presentation.slides.length - 1 && setCurrentSlide(currentSlide + 1)} disabled={currentSlide === presentation.slides.length - 1}>Next →</button>
+        </div>
+      </div>
     </div>
   );
 }

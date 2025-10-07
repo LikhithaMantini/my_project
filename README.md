@@ -64,28 +64,35 @@ PPT1/
 
 ## 🔌 API Endpoints
 - **GET `/api/presentations`** → `{ items: [{ id, name, updatedAt }] }`
-- **GET `/api/presentations/:id`** → Full presentation JSON
-- **POST `/api/presentations`** → Upsert presentation, returns `{ ok: true, id }`
 - **DELETE `/api/presentations/:id`** → Delete a saved presentation
 
 ## 🚀 Quick Start
 
-```bash
-# 1. Install dependencies
-npm install
+### Local Development
 
-# 2. Start server
-npm start
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-# 3. Open browser
-# http://localhost:3001
-```
+2. Start the server:
+   ```bash
+   npm start
+   ```
+
+3. Open your browser to:
+   ```
+   http://localhost:10000
+   ```
+
+### Deploy to Render
+
+See [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md) for detailed deployment instructions.
 
 ## 🎮 How to Use
 
 ### Creating Slides
 - Click **➕ Title**, **➕ Title+Content**, or **➕ Blank**
-- Navigate with **▲ Prev** / **▼ Next** buttons or **Page Up/Down** keys
 - Manage slides: **⎘** duplicate, **✕** delete, **▲▼** reorder
 
 ### Adding Elements
