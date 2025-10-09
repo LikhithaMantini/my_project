@@ -1,9 +1,156 @@
-const { useState, useEffect, useRef, useCallback } = React;
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+// Debug function to check library availability
+function checkLibraryStatus() {
+  console.log('Library Status Check:');
+  console.log('- PptxGenJS available:', typeof PptxGenJS !== 'undefined');
+  console.log('- Chart.js available:', typeof Chart !== 'undefined');
+  if (typeof PptxGenJS !== 'undefined') {
+    console.log('- PptxGenJS version:', PptxGenJS.version || 'unknown');
+  }
+}
+
+// Check libraries on page load
+window.addEventListener('load', () => {
+  setTimeout(checkLibraryStatus, 1000);
+});
 
 // Enhanced data model with shapes, themes, multi-series charts, text formatting
 function uid(prefix = 'id') { return prefix + '_' + Math.random().toString(36).slice(2, 9); }
 
-function defaultPresentation() {
+// Font families list
+const FONT_FAMILIES = [
+  'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana', 
+  'Comic Sans MS', 'Impact', 'Trebuchet MS', 'Palatino', 'Garamond',
+  'Helvetica', 'Calibri', 'Cambria', 'Consolas', 'Lucida Console',
+  'Tahoma', 'Century Gothic', 'Book Antiqua', 'Arial Black', 'Franklin Gothic Medium'
+];
+
+const TOOLBAR_TABS = [
+  { id: 'file', label: 'File' },
+  { id: 'insert', label: 'Insert' },
+  { id: 'design', label: 'Design' },
+  { id: 'format', label: 'Format', requiresSelection: true },
+];
+
+// Searchable Font Dropdown Component
+function FontDropdown({ value, onChange, title }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const dropdownRef = useRef();
+
+  const filteredFonts = FONT_FAMILIES.filter(font =>
+    font.toLowerCase().includes(search.toLowerCase())
+  );
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearch('');
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (font) => {
+    onChange(font);
+    setIsOpen(false);
+    setSearch('');
+  };
+
+  return (
+    <div className="font-dropdown" ref={dropdownRef} style={{ position: 'relative', width: '140px' }}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        title={title}
+        style={{
+          width: '100%',
+          textAlign: 'left',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '12px',
+          padding: '6px 10px',
+          background: 'var(--color-panel)',
+          border: '1px solid var(--color-border)',
+          color: 'var(--color-text-primary)',
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {value || 'Arial'}
+        </span>
+        <span>{isOpen ? '^' : 'v'}</span>
+      </button>
+
+      {isOpen && (
+        <div
+          style={
+            {
+              position: 'absolute',
+              top: 'calc(100% + 4px)',
+              left: 0,
+              right: 0,
+              background: 'var(--color-panel)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '6px',
+              boxShadow: '0 18px 40px rgba(0,0,0,0.45)',
+              zIndex: 1000,
+              maxHeight: '220px',
+              overflow: 'hidden',
+            }
+          }
+        >
+          <input
+            type="text"
+            placeholder="Search fonts..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px',
+              border: 'none',
+              borderBottom: '1px solid var(--color-border)',
+              fontSize: '12px',
+              outline: 'none',
+              background: 'var(--color-surface-alt)',
+              color: 'var(--color-text-primary)',
+            }}
+            autoFocus
+          />
+          <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
+            {filteredFonts.map(font => (
+              <div
+                key={font}
+                onClick={() => handleSelect(font)}
+                style={{
+                  padding: '8px 10px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontFamily: font,
+                  borderBottom: '1px solid var(--color-border)',
+                  backgroundColor: font === value ? 'var(--color-surface-alt)' : 'transparent',
+                  color: 'var(--color-text-primary)',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-surface-alt)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = font === value ? 'var(--color-surface-alt)' : 'transparent'}
+              >
+                {font}
+              </div>
+            ))}
+            {filteredFonts.length === 0 && (
+              <div style={{ padding: '12px', color: 'var(--color-text-muted)', fontSize: '12px', textAlign: 'center' }}>
+                No fonts found
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}function defaultPresentation() {
   return {
     name: 'Untitled Presentation',
     theme: 'default',
@@ -12,195 +159,478 @@ function defaultPresentation() {
 }
 
 function makeSlide(template = 'blank', theme = 'default') {
+  // Standard 4:3 aspect ratio (960x720 for better compatibility)
   const slide = { id: uid('slide'), background: theme === 'dark' ? '#1a1a1a' : '#ffffff', elements: [] };
   const textColor = theme === 'dark' ? '#ffffff' : '#111111';
   if (template === 'title') {
-    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 100, w: 600, h: 80, rotation: 0, styles: { fontSize: 36, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: 'Title' });
-    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 200, w: 600, h: 40, rotation: 0, styles: { fontSize: 20, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: 'Subtitle' });
+    slide.elements.push({ id: uid('el'), type: 'text', x: 80, y: 180, w: 800, h: 100, rotation: 0, styles: { fontSize: 44, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'center', fontFamily: 'Arial' }, content: 'Click to add title' });
+    slide.elements.push({ id: uid('el'), type: 'text', x: 80, y: 320, w: 800, h: 80, rotation: 0, styles: { fontSize: 24, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'center', fontFamily: 'Arial' }, content: 'Click to add subtitle' });
   } else if (template === 'titleContent') {
-    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 60, w: 600, h: 60, rotation: 0, styles: { fontSize: 32, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: 'Title' });
-    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 150, w: 600, h: 280, rotation: 0, styles: { fontSize: 18, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: '• Point 1\n• Point 2\n• Point 3' });
+    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 50, w: 840, h: 80, rotation: 0, styles: { fontSize: 32, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: 'Click to add title' });
+    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 160, w: 840, h: 400, rotation: 0, styles: { fontSize: 18, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: '• Click to add content\n• Add your key points here\n• Use bullet points for clarity' });
   }
   return slide;
 }
 
 // Compact Toolbar with icon-based tabs
-function Toolbar({ onAddSlide, onAddText, onAddImage, onAddChart, onAddShape, onDeleteElement, onChangeProp, selectedElement, onSave, onLoad, onExport, onShare, onPresent, presentationName, setPresentationName, onUndo, onRedo, canUndo, canRedo, onChangeBackground, currentSlide, onEditChart }) {
+function Toolbar({
+  onAddSlide,
+  onAddText,
+  onAddImage,
+  onAddChart,
+  onAddShape,
+  onDeleteElement,
+  onChangeProp,
+  selectedElement,
+  onSave,
+  onLoad,
+  onExport,
+  onShare,
+  onPresent,
+  presentationName,
+  setPresentationName,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
+  onChangeBackground,
+  currentSlide,
+  onEditChart,
+  onShowHelp,
+}) {
   const fileRef = useRef();
   const [activeTab, setActiveTab] = useState('file');
   const isText = selectedElement?.type === 'text';
   const isShape = selectedElement?.type === 'shape';
   const isChart = selectedElement?.type === 'chart';
-  
-  return (
-    <div className="toolbar-compact">
-      {/* Top bar with tabs and presentation name */}
-      <div className="toolbar-header">
-        <div className="toolbar-tabs">
-          <div className={`toolbar-tab ${activeTab==='file'?'active':''}`} onClick={()=>setActiveTab('file')}>📁 File</div>
-          <div className={`toolbar-tab ${activeTab==='insert'?'active':''}`} onClick={()=>setActiveTab('insert')}>➕ Insert</div>
-          <div className={`toolbar-tab ${activeTab==='design'?'active':''}`} onClick={()=>setActiveTab('design')}>🎨 Design</div>
-          {selectedElement && <div className={`toolbar-tab ${activeTab==='format'?'active':''}`} onClick={()=>setActiveTab('format')}>✨ Format</div>}
+  const availableTabs = useMemo(
+    () => TOOLBAR_TABS.filter(tab => !tab.requiresSelection || selectedElement),
+    [selectedElement]
+  );
+
+  useEffect(() => {
+    if (!availableTabs.some(tab => tab.id === activeTab)) {
+      setActiveTab(availableTabs[0]?.id || 'file');
+    }
+  }, [activeTab, availableTabs]);
+
+  const renderFileTab = () => (
+    <div className="toolbar-group">
+      <div className="tool-section">
+        <label className="section-label">File Operations</label>
+        <div className="file-menu-item" onClick={onSave} title="Save presentation" tabIndex={0} 
+             onKeyDown={(e) => e.key === 'Enter' && onSave()}>
+          <div className="file-menu-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17,21 17,13 7,13 7,21"/>
+              <polyline points="7,3 7,8 15,8"/>
+            </svg>
+          </div>
+          <div className="file-menu-content">
+            <div className="file-menu-title">Save</div>
+            <div className="file-menu-desc">Download as PowerPoint (.pptx)</div>
+          </div>
         </div>
-        <input className="name-input-compact" value={presentationName} onChange={e=>setPresentationName(e.target.value)} placeholder="Untitled" />
-        <button className="present-btn" onClick={onPresent} title="Present slideshow">▶️</button>
+        <div className="file-menu-item" onClick={() => {
+          const customName = prompt('Enter filename:', presentation.name || 'My Presentation');
+          if (customName && customName.trim()) {
+            // Update presentation name and save
+            setPresentation(prev => ({ ...prev, name: customName.trim() }));
+            // Call save with the new name
+            setTimeout(() => {
+              const payload = { ...presentation, name: customName.trim() };
+              fetch('/api/presentations', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
+                .then(r=>r.json())
+                .then(d=>{
+                  if (d && d.id) {
+                    setPresentation(prev => ({ ...prev, id: d.id, name: customName.trim() }));
+                    alert(`Presentation saved as "${customName.trim()}" successfully!`);
+                  } else {
+                    alert('Save failed: Invalid response from server');
+                  }
+                })
+                .catch(err=> {
+                  console.error('Save error:', err);
+                  alert('Save failed: Could not connect to server');
+                });
+            }, 100);
+          }
+        }} title="Save with custom filename">
+          <div className="file-menu-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14,2 14,8 20,8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10,9 9,9 8,9"/>
+            </svg>
+          </div>
+          <div className="file-menu-content">
+            <div className="file-menu-title">Save As</div>
+            <div className="file-menu-desc">Save with custom filename</div>
+          </div>
+        </div>
+        <div className="file-menu-item" onClick={() => {
+          // Export as PDF functionality
+          if (window.confirm('Export as PDF? This will open the presentation in a new window for printing to PDF.')) {
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <title>${presentation.name || 'Presentation'}</title>
+                <style>
+                  body { margin: 0; font-family: Arial, sans-serif; }
+                  .slide-page { width: 100vw; height: 100vh; page-break-after: always; position: relative; display: flex; align-items: center; justify-content: center; }
+                  .slide-content { width: 1280px; height: 720px; position: relative; transform: scale(0.7); }
+                  .element { position: absolute; }
+                  .text-element { white-space: pre-wrap; }
+                  @media print { .slide-page { page-break-after: always; } }
+                </style>
+              </head>
+              <body>
+                ${presentation.slides.map(slide => `
+                  <div class="slide-page" style="background: ${slide.background}">
+                    <div class="slide-content">
+                      ${slide.elements.map(el => {
+                        if (el.type === 'text') {
+                          return `<div class="element text-element" style="
+                            left: ${el.x}px; top: ${el.y}px; width: ${el.w}px; height: ${el.h}px;
+                            font-size: ${el.styles?.fontSize || 18}px;
+                            color: ${el.styles?.color || '#000'};
+                            font-weight: ${el.styles?.fontWeight || 'normal'};
+                            font-style: ${el.styles?.fontStyle || 'normal'};
+                            text-decoration: ${el.styles?.textDecoration || 'none'};
+                            text-align: ${el.styles?.textAlign || 'left'};
+                            font-family: ${el.styles?.fontFamily || 'Arial'};
+                          ">${el.content || ''}</div>`;
+                        }
+                        return '';
+                      }).join('')}
+                    </div>
+                  </div>
+                `).join('')}
+              </body>
+              </html>
+            `);
+            printWindow.document.close();
+            setTimeout(() => printWindow.print(), 500);
+          }
+        }} title="Export as PDF">
+          <div className="file-menu-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14,2 14,8 20,8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <line x1="10" y1="9" x2="8" y2="9"/>
+            </svg>
+          </div>
+          <div className="file-menu-content">
+            <div className="file-menu-title">Export as PDF</div>
+            <div className="file-menu-desc">Print or save as PDF</div>
+          </div>
+        </div>
+        <div className="file-menu-item" onClick={onExport} title="Export to PowerPoint">
+          <div className="file-menu-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="12" rx="2" ry="2"/>
+              <line x1="7" y1="8" x2="17" y2="8"/>
+              <line x1="7" y1="12" x2="17" y2="12"/>
+              <line x1="7" y1="16" x2="13" y2="16"/>
+            </svg>
+          </div>
+          <div className="file-menu-content">
+            <div className="file-menu-title">Export as PPTX</div>
+            <div className="file-menu-desc">Download PowerPoint file</div>
+          </div>
+        </div>
+        <div className="file-menu-item" onClick={onShare} title="Generate shareable link">
+          <div className="file-menu-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="18" cy="5" r="3"/>
+              <circle cx="6" cy="12" r="3"/>
+              <circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+          </div>
+          <div className="file-menu-content">
+            <div className="file-menu-title">Share</div>
+            <div className="file-menu-desc">Generate shareable link</div>
+          </div>
+        </div>
       </div>
-      
-      {/* Tab content */}
-      <div className="toolbar-content">
-        {activeTab === 'file' && (
-          <div className="toolbar-group">
-            <div className="tool-section">
-              <button onClick={onSave} title="Save">💾</button>
-              <button onClick={onLoad} title="Load">📂</button>
-              <button onClick={onExport} title="Export">📤</button>
-              <button onClick={onShare} title="Share">🔗</button>
-            </div>
-            <div className="tool-divider"></div>
-            <div className="tool-section">
-              <button onClick={onUndo} disabled={!canUndo} title="Undo">↶</button>
-              <button onClick={onRedo} disabled={!canRedo} title="Redo">↷</button>
-            </div>
-          </div>
-        )}
-        
-        {activeTab === 'insert' && (
-          <div className="toolbar-group">
-            <div className="tool-section">
-              <label className="section-label">Slides</label>
-              <button onClick={()=>onAddSlide('title')} title="Title slide">📄</button>
-              <button onClick={()=>onAddSlide('titleContent')} title="Title + Content">📋</button>
-              <button onClick={()=>onAddSlide('blank')} title="Blank slide">⬜</button>
-            </div>
-            <div className="tool-divider"></div>
-            <div className="tool-section">
-              <label className="section-label">Elements</label>
-              <button onClick={onAddText} title="Text box">📝</button>
-              <button onClick={()=>fileRef.current && fileRef.current.click()} title="Image">🖼️</button>
-              <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={(e)=>{
-                const f = e.target.files && e.target.files[0];
-                if (!f) return;
-                const reader = new FileReader();
-                reader.onload = () => onAddImage(reader.result);
-                reader.readAsDataURL(f);
-                e.target.value = '';
-              }} />
-            </div>
-            <div className="tool-divider"></div>
-            <div className="tool-section">
-              <label className="section-label">Charts</label>
-              <button onClick={()=>onAddChart('bar')} title="Bar chart">📊</button>
-              <button onClick={()=>onAddChart('line')} title="Line chart">📈</button>
-              <button onClick={()=>onAddChart('pie')} title="Pie chart">🥧</button>
-            </div>
-            <div className="tool-divider"></div>
-            <div className="tool-section">
-              <label className="section-label">Shapes</label>
-              <button onClick={()=>onAddShape('rect')} title="Rectangle">▭</button>
-              <button onClick={()=>onAddShape('circle')} title="Circle">⬤</button>
-              <button onClick={()=>onAddShape('line')} title="Line">─</button>
-            </div>
-          </div>
-        )}
-        
-        {activeTab === 'design' && (
-          <div className="toolbar-group">
-            <div className="tool-section">
-              <label className="section-label">Background</label>
-              <input type="color" value={currentSlide?.background || '#ffffff'} onChange={e=>onChangeBackground(e.target.value)} title="Slide background" />
-            </div>
-          </div>
-        )}
-        
-        {activeTab === 'format' && selectedElement && (
-          <div className="toolbar-group">
-            {isText && (
-              <>
-                <div className="tool-section">
-                  <label className="section-label">Text Style</label>
-                  <button onClick={()=>onChangeProp('fontWeight', selectedElement.styles?.fontWeight==='bold'?'normal':'bold')} className={selectedElement.styles?.fontWeight==='bold'?'active':''} title="Bold" style={{ fontWeight: 'bold' }}>B</button>
-                  <button onClick={()=>onChangeProp('fontStyle', selectedElement.styles?.fontStyle==='italic'?'normal':'italic')} className={selectedElement.styles?.fontStyle==='italic'?'active':''} title="Italic" style={{ fontStyle: 'italic' }}>I</button>
-                  <button onClick={()=>onChangeProp('textDecoration', selectedElement.styles?.textDecoration==='underline'?'none':'underline')} className={selectedElement.styles?.textDecoration==='underline'?'active':''} title="Underline" style={{ textDecoration: 'underline' }}>U</button>
-                </div>
-                <div className="tool-divider"></div>
-                <div className="tool-section">
-                  <label className="section-label">Align</label>
-                  <button onClick={()=>onChangeProp('textAlign','left')} className={selectedElement.styles?.textAlign==='left'?'active':''} title="Left">⬅</button>
-                  <button onClick={()=>onChangeProp('textAlign','center')} className={selectedElement.styles?.textAlign==='center'?'active':''} title="Center">⬌</button>
-                  <button onClick={()=>onChangeProp('textAlign','right')} className={selectedElement.styles?.textAlign==='right'?'active':''} title="Right">➡</button>
-                </div>
-                <div className="tool-divider"></div>
-                <div className="tool-section">
-                  <label className="section-label">Font</label>
-                  <input type="number" min="8" max="96" value={selectedElement.styles?.fontSize || 18} onChange={e=>onChangeProp('fontSize', parseInt(e.target.value||'18',10))} title="Size" style={{ width: '50px' }} />
-                  <input type="color" value={selectedElement.styles?.color || '#111111'} onChange={e=>onChangeProp('color', e.target.value)} title="Color" />
-                  <select value={selectedElement.styles?.fontFamily || 'Arial'} onChange={e=>onChangeProp('fontFamily', e.target.value)} title="Font" style={{ width: '100px' }}>
-                    <option value="Arial">Arial</option>
-                    <option value="Times New Roman">Times</option>
-                    <option value="Courier New">Courier</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Verdana">Verdana</option>
-                    <option value="Comic Sans MS">Comic</option>
-                    <option value="Impact">Impact</option>
-                    <option value="Trebuchet MS">Trebuchet</option>
-                    <option value="Palatino">Palatino</option>
-                    <option value="Garamond">Garamond</option>
-                  </select>
-                </div>
-              </>
-            )}
-            {isShape && (
-              <div className="tool-section">
-                <label className="section-label">Shape Style</label>
-                <input type="color" value={selectedElement.fill || '#4e79a7'} onChange={e=>onChangeProp('fill', e.target.value)} title="Fill" />
-                <input type="color" value={selectedElement.stroke || '#000000'} onChange={e=>onChangeProp('stroke', e.target.value)} title="Stroke" />
-                <input type="number" min="0" max="20" value={selectedElement.strokeWidth || 2} onChange={e=>onChangeProp('strokeWidth', parseInt(e.target.value||'2',10))} title="Width" style={{ width: '50px' }} />
-              </div>
-            )}
-            {isChart && (
-              <div className="tool-section">
-                <button onClick={onEditChart} title="Edit data">✏️ Edit Data</button>
-              </div>
-            )}
-            <div className="tool-divider"></div>
-            <div className="tool-section">
-              <button onClick={onDeleteElement} title="Delete" className="delete-btn">🗑️</button>
-            </div>
-          </div>
-        )}
+      <div className="tool-divider"></div>
+      <div className="tool-section">
+        <label className="section-label">History</label>
+        <button onClick={onUndo} disabled={!canUndo} title="Undo">Undo</button>
+        <button onClick={onRedo} disabled={!canRedo} title="Redo">Redo</button>
+        <button onClick={onLoad} title="Open saved presentation">Open</button>
+        <button onClick={onShowHelp} title="Help & keyboard shortcuts">Help</button>
       </div>
     </div>
   );
-}
 
-function SlideThumb({ slide, index, active, onClick, onDuplicate, onDelete, onMoveUp, onMoveDown }) {
+  const renderInsertTab = () => (
+    <div className="toolbar-group">
+      <div className="tool-section">
+        <label className="section-label">Slides</label>
+        <button onClick={() => onAddSlide('title')} title="Add a title slide">Title</button>
+        <button onClick={() => onAddSlide('titleContent')} title="Add slide with body content">Title + Content</button>
+        <button onClick={() => onAddSlide('blank')} title="Add blank slide">Blank</button>
+      </div>
+      <div className="tool-divider"></div>
+      <div className="tool-section">
+        <label className="section-label">Elements</label>
+        <button onClick={onAddText} title="Insert text box">Text Box</button>
+        <button onClick={() => fileRef.current && fileRef.current.click()} title="Upload an image">Image</button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => onAddImage(reader.result);
+            reader.readAsDataURL(file);
+            e.target.value = '';
+          }}
+        />
+      </div>
+      <div className="tool-divider"></div>
+      <div className="tool-section">
+        <label className="section-label">Charts</label>
+        <button onClick={() => onAddChart('bar')} title="Insert bar chart">Bar</button>
+        <button onClick={() => onAddChart('line')} title="Insert line chart">Line</button>
+        <button onClick={() => onAddChart('pie')} title="Insert pie chart">Pie</button>
+      </div>
+      <div className="tool-divider"></div>
+      <div className="tool-section">
+        <label className="section-label">Shapes</label>
+        <button onClick={() => onAddShape('rect')} title="Insert rectangle">Rectangle</button>
+        <button onClick={() => onAddShape('circle')} title="Insert circle">Circle</button>
+        <button onClick={() => onAddShape('line')} title="Insert line">Line</button>
+      </div>
+    </div>
+  );
+
+  const renderDesignTab = () => (
+    <div className="toolbar-group">
+      <div className="tool-section">
+        <label className="section-label">Background</label>
+        <input
+          type="color"
+          value={currentSlide?.background || '#ffffff'}
+          onChange={(e) => onChangeBackground(e.target.value)}
+          title="Slide background"
+        />
+        <button onClick={() => onChangeBackground('#ffffff')} title="Classic white background">Light</button>
+        <button onClick={() => onChangeBackground('#000000')} title="Solid black background">Dark</button>
+        <button onClick={() => onChangeBackground('#f2f2f2')} title="Soft gray background">Soft Gray</button>
+      </div>
+    </div>
+  );
+
+
+  const renderFormatTab = () => {
+    if (!selectedElement) return null;
+    return (
+      <div className="toolbar-group">
+        {isText && (
+          <>
+            <div className="tool-section">
+              <label className="section-label">Text Style</label>
+              <button
+                onClick={() => onChangeProp('fontWeight', selectedElement.styles?.fontWeight === 'bold' ? 'normal' : 'bold')}
+                className={selectedElement.styles?.fontWeight === 'bold' ? 'active' : ''}
+                title="Bold"
+                style={{ fontWeight: 'bold' }}
+              >
+                B
+              </button>
+              <button
+                onClick={() => onChangeProp('fontStyle', selectedElement.styles?.fontStyle === 'italic' ? 'normal' : 'italic')}
+                className={selectedElement.styles?.fontStyle === 'italic' ? 'active' : ''}
+                title="Italic"
+                style={{ fontStyle: 'italic' }}
+              >
+                I
+              </button>
+              <button
+                onClick={() =>
+                  onChangeProp(
+                    'textDecoration',
+                    selectedElement.styles?.textDecoration === 'underline' ? 'none' : 'underline'
+                  )
+                }
+                className={selectedElement.styles?.textDecoration === 'underline' ? 'active' : ''}
+                title="Underline"
+                style={{ textDecoration: 'underline' }}
+              >
+                U
+              </button>
+            </div>
+            <div className="tool-divider"></div>
+            <div className="tool-section">
+              <label className="section-label">Align</label>
+              <button
+                onClick={() => onChangeProp('textAlign', 'left')}
+                className={selectedElement.styles?.textAlign === 'left' ? 'active' : ''}
+                title="Align left"
+              >
+                Left
+              </button>
+              <button
+                onClick={() => onChangeProp('textAlign', 'center')}
+                className={selectedElement.styles?.textAlign === 'center' ? 'active' : ''}
+                title="Align center"
+              >
+                Center
+              </button>
+              <button
+                onClick={() => onChangeProp('textAlign', 'right')}
+                className={selectedElement.styles?.textAlign === 'right' ? 'active' : ''}
+                title="Align right"
+              >
+                Right
+              </button>
+            </div>
+            <div className="tool-divider"></div>
+            <div className="tool-section">
+              <label className="section-label">Font</label>
+              <input
+                type="number"
+                min="8"
+                max="96"
+                value={selectedElement.styles?.fontSize || 18}
+                onChange={(e) => onChangeProp('fontSize', parseInt(e.target.value || '18', 10))}
+                title="Font size"
+                style={{ width: '60px' }}
+              />
+              <input
+                type="color"
+                value={selectedElement.styles?.color || '#111111'}
+                onChange={(e) => onChangeProp('color', e.target.value)}
+                title="Font color"
+              />
+              <FontDropdown
+                value={selectedElement.styles?.fontFamily || 'Arial'}
+                onChange={(font) => onChangeProp('fontFamily', font)}
+                title="Font family"
+              />
+            </div>
+          </>
+        )}
+        {isShape && (
+          <div className="tool-section">
+            <label className="section-label">Shape Style</label>
+            <input
+              type="color"
+              value={selectedElement.fill || '#4e79a7'}
+              onChange={(e) => onChangeProp('fill', e.target.value)}
+              title="Fill color"
+            />
+            <input
+              type="color"
+              value={selectedElement.stroke || '#000000'}
+              onChange={(e) => onChangeProp('stroke', e.target.value)}
+              title="Stroke color"
+            />
+            <input
+              type="number"
+              min="0"
+              max="20"
+              value={selectedElement.strokeWidth || 2}
+              onChange={(e) => onChangeProp('strokeWidth', parseInt(e.target.value || '2', 10))}
+              title="Stroke width"
+              style={{ width: '60px' }}
+            />
+          </div>
+        )}
+        {isChart && (
+          <div className="tool-section">
+            <button onClick={onEditChart} title="Edit chart data">Edit Chart Data</button>
+          </div>
+        )}
+        <div className="tool-divider"></div>
+        <div className="tool-section">
+          <button onClick={onDeleteElement} title="Remove selected element" className="delete-btn">
+            Delete Element
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="toolbar-compact">
+      <div className="toolbar-header">
+        <div className="toolbar-tabs">
+          {availableTabs.map((tab) => (
+            <div
+              key={tab.id}
+              className={`toolbar-tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </div>
+          ))}
+        </div>
+        <input
+          className="name-input-compact"
+          value={presentationName}
+          onChange={(e) => setPresentationName(e.target.value)}
+          placeholder="Untitled presentation"
+        />
+        <button className="present-btn" onClick={onPresent} title="Present slideshow">
+          Present
+        </button>
+      </div>
+
+      <div className="toolbar-content">
+        {activeTab === 'file' && renderFileTab()}
+        {activeTab === 'insert' && renderInsertTab()}
+        {activeTab === 'design' && renderDesignTab()}
+        {activeTab === 'format' && renderFormatTab()}
+      </div>
+    </div>
+  );
+}function SlideThumb({ slide, index, total, active, onClick, onDuplicate, onDelete, onMoveUp, onMoveDown }) {
   const thumbRef = useRef();
-  
+  const canMoveUp = index > 0;
+  const canMoveDown = index < (total - 1);
+
   useEffect(() => {
     if (active && thumbRef.current) {
       thumbRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }, [active]);
-  
+
   return (
     <div ref={thumbRef} className={"slide-thumb" + (active ? ' active' : '')}>
-      <div className="slide-thumb-inner" style={{ background: slide.background }} onClick={onClick}>
-        {slide.elements.slice(0,2).map(el => (
+      <div className="slide-thumb-inner" style={{ background: slide.background, aspectRatio: '4/3' }} onClick={onClick}>
+        {slide.elements.slice(0, 2).map(el => (
           <div key={el.id} className="thumb-el" />
         ))}
       </div>
-      <div className="slide-num">{index+1}</div>
+      <div className="slide-num">{index + 1}</div>
       <div className="slide-actions">
-        <button onClick={onDuplicate} title="Duplicate">⎘</button>
-        <button onClick={onDelete} title="Delete">✕</button>
-        {index > 0 && <button onClick={onMoveUp} title="Move up">▲</button>}
-        {<button onClick={onMoveDown} title="Move down">▼</button>}
+        <button onClick={onDuplicate} title="Duplicate slide" className="slide-action-btn">⎘</button>
+        <button onClick={onDelete} title="Delete slide" className="slide-action-btn delete">✕</button>
+        {canMoveUp && (
+          <button onClick={onMoveUp} title="Move slide up" className="slide-action-btn">▲</button>
+        )}
+        {canMoveDown && (
+          <button onClick={onMoveDown} title="Move slide down" className="slide-action-btn">▼</button>
+        )}
       </div>
     </div>
   );
-}
-
-function ChartElement({ element }) {
+}function ChartElement({ element }) {
   const ref = useRef();
   useEffect(()=>{
     if (!ref.current) return;
@@ -240,7 +670,7 @@ function ShapeElement({ element }) {
 
 function Canvas({ slide, selectedElementId, onSelect, onChangeText, onDragStart, onDragEnd, onResizeStart, onResizeEnd }) {
   return (
-    <div className="canvas" style={{ background: slide.background }}>
+    <div className="canvas" style={{ background: slide.background, aspectRatio: '4/3', width: '960px', height: '720px' }}>
       {slide.elements.map(el => {
         const style = { left: el.x, top: el.y, width: el.w, height: el.h, transform: `rotate(${el.rotation||0}deg)` };
         const selected = el.id === selectedElementId;
@@ -297,7 +727,7 @@ function Canvas({ slide, selectedElementId, onSelect, onChangeText, onDragStart,
 }
 
 function DragHandle({ onDragStart }) {
-  return <div className="drag-handle" onMouseDown={onDragStart} title="Drag to move">✥</div>;
+  return <div className="drag-handle" onMouseDown={onDragStart} title="Drag to move">Move</div>;
 }
 
 function ResizeHandles({ onResizeStart }) {
@@ -313,33 +743,141 @@ function ResizeHandles({ onResizeStart }) {
 
 function LoadDialog({ onClose, onLoadId }) {
   const [items, setItems] = useState([]);
-  useEffect(()=>{
-    fetch('/api/presentations').then(r=>r.json()).then(d=> setItems(d.items||[])).catch(()=>{});
-  },[]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    try {
+      // Load presentations from localStorage
+      const localPresentations = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('presentation_')) {
+          try {
+            const data = JSON.parse(localStorage.getItem(key));
+            const id = key.replace('presentation_', '');
+            localPresentations.push({
+              id: id,
+              name: data.name || 'Untitled Presentation',
+              updatedAt: data.createdAt || new Date().toISOString(),
+              slides: data.slides?.length || 0
+            });
+          } catch (parseErr) {
+            console.warn('Failed to parse presentation:', key, parseErr);
+          }
+        }
+      }
+      
+      if (localPresentations.length > 0) {
+        // Sort by creation date (newest first)
+        localPresentations.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        setItems(localPresentations);
+        setError(null);
+      } else {
+        setItems([]);
+        setError(null);
+      }
+      
+      // Also try to fetch from API if available (fallback)
+      fetch('/api/presentations')
+        .then(r => {
+          if (r.ok) return r.json();
+          throw new Error('API not available');
+        })
+        .then(d => {
+          const apiItems = d.items || [];
+          // Merge with local items, avoiding duplicates
+          const mergedItems = [...localPresentations];
+          apiItems.forEach(apiItem => {
+            if (!mergedItems.find(item => item.id === apiItem.id)) {
+              mergedItems.push(apiItem);
+            }
+          });
+          setItems(mergedItems);
+        })
+        .catch(() => {
+          // API not available, use only local presentations
+          console.log('API not available, using local presentations only');
+        });
+        
+    } catch (err) {
+      console.error('Load error:', err);
+      setError('Failed to load presentations from local storage.');
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return (
     <div className="modal">
       <div className="modal-body">
         <h3>Load Presentation</h3>
-        <div className="list">
-          {items.map(it => (
-            <div key={it.id} className="list-item">
-              <div>
-                <div className="name">{it.name}</div>
-                <div className="meta">{it.id} {it.updatedAt ? ' · ' + it.updatedAt : ''}</div>
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--color-text-muted)' }}>
+            Loading presentations...
+          </div>
+        )}
+        {error && (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '20px',
+              color: 'var(--color-text-primary)',
+              background: 'rgba(255, 255, 255, 0.04)',
+              borderRadius: '6px',
+              margin: '10px 0',
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            {error}
+          </div>
+        )}
+        {!loading && !error && (
+          <div className="list">
+            {items.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: 'var(--color-text-muted)' }}>
+                No saved presentations found. Create and save a presentation first.
               </div>
-              <button onClick={()=> onLoadId(it.id)}>Open</button>
-            </div>
-          ))}
-        </div>
+            ) : (
+              items.map(it => (
+                <div key={it.id} className="list-item">
+                  <div>
+                    <div className="name">{it.name || 'Untitled Presentation'}</div>
+                    <div className="meta">
+                      {it.slides && <span>{it.slides} slides - </span>}
+                      {it.updatedAt && (
+                        <span>Saved: {new Date(it.updatedAt).toLocaleString()}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => onLoadId(it.id)}>Open</button>
+                    <button 
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to delete this presentation?')) {
+                          localStorage.removeItem(`presentation_${it.id}`);
+                          setItems(items.filter(item => item.id !== it.id));
+                        }
+                      }}
+                      style={{ background: '#dc2626', borderColor: '#dc2626' }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
         <div className="actions">
           <button onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
   );
-}
-
-function ChartEditor({ element, onUpdate, onClose }) {
+}function ChartEditor({ element, onUpdate, onClose }) {
   const [chartType, setChartType] = useState(element.chartType || 'bar');
   const [labels, setLabels] = useState((element.data?.labels||['A','B','C']).join(','));
   const [datasets, setDatasets] = useState(element.data?.datasets || [{ label: 'Series 1', values: [3,5,2], color: '#4e79a7' }]);
@@ -353,7 +891,12 @@ function ChartEditor({ element, onUpdate, onClose }) {
   function updateDataset(idx, field, value) {
     const next = [...datasets];
     if (field === 'values') {
-      next[idx].values = value.split(',').map(s=>parseFloat(s.trim())||0);
+      // Better parsing with validation
+      const values = value.split(',').map(s => {
+        const num = parseFloat(s.trim());
+        return isNaN(num) ? 0 : num;
+      });
+      next[idx].values = values;
     } else {
       next[idx][field] = value;
     }
@@ -371,7 +914,20 @@ function ChartEditor({ element, onUpdate, onClose }) {
           <option value="pie">Pie</option>
         </select>
         <label>Labels (comma-separated)</label>
-        <input value={labels} onChange={e=>setLabels(e.target.value)} />
+        <input 
+          value={labels} 
+          onChange={e=>{
+            setLabels(e.target.value);
+            // Update dataset values to match label count
+            const labelCount = e.target.value.split(',').filter(l => l.trim()).length;
+            setDatasets(prev => prev.map(ds => ({
+              ...ds,
+              values: ds.values.length === labelCount ? ds.values : 
+                      Array(labelCount).fill(0).map((_, i) => ds.values[i] || 0)
+            })));
+          }} 
+          placeholder="e.g., Q1, Q2, Q3, Q4"
+        />
         <h4>Data Series</h4>
         {datasets.map((ds, i) => (
           <div key={i} className="dataset-row">
@@ -404,6 +960,7 @@ function App() {
   const [showLoad, setShowLoad] = useState(false);
   const [showChartEditor, setShowChartEditor] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [presentMode, setPresentMode] = useState(false);
   const [dragging, setDragging] = useState(null);
   const [resizing, setResizing] = useState(null);
@@ -416,16 +973,33 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const presentationId = params.get('presentation');
     if (presentationId) {
-      fetch('/api/presentations/'+encodeURIComponent(presentationId))
-        .then(r=>r.json())
-        .then(data=>{
+      try {
+        // Try localStorage first
+        const storedData = localStorage.getItem(`presentation_${presentationId}`);
+        if (storedData) {
+          const data = JSON.parse(storedData);
           setPresentation(data);
           setCurrentSlide(0);
           setSelectedElementId(null);
           setHistory([JSON.stringify(data)]);
           setHistoryIndex(0);
-        })
-        .catch(()=> console.error('Failed to load shared presentation'));
+          return;
+        }
+        
+        // Fallback to API
+        fetch('/api/presentations/'+encodeURIComponent(presentationId))
+          .then(r=>r.json())
+          .then(data=>{
+            setPresentation(data);
+            setCurrentSlide(0);
+            setSelectedElementId(null);
+            setHistory([JSON.stringify(data)]);
+            setHistoryIndex(0);
+          })
+          .catch(()=> console.error('Failed to load shared presentation'));
+      } catch (err) {
+        console.error('Failed to load shared presentation:', err);
+      }
     }
   }, []);
 
@@ -504,6 +1078,19 @@ function App() {
         e.preventDefault();
         setCurrentSlide(currentSlide + 1);
         setSelectedElementId(null);
+      }
+      // Quick shortcuts
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        onSave();
+      }
+      if (e.key === 'F5') {
+        e.preventDefault();
+        onPresent();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        onAddSlide('blank');
       }
     }
     window.addEventListener('keydown', handleKeyDown);
@@ -604,7 +1191,7 @@ function App() {
 
   function onAddText() {
     updatePresentation(p => {
-      const el = { id: uid('el'), type: 'text', x: 80, y: 120, w: 400, h: 80, rotation: 0, styles: { fontSize: 20, color: '#111111', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: 'Text' };
+      const el = { id: uid('el'), type: 'text', x: 100, y: 150, w: 500, h: 100, rotation: 0, styles: { fontSize: 24, color: '#111111', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: 'Click to edit text' };
       p.slides[currentSlide].elements.push(el);
       setSelectedElementId(el.id);
     });
@@ -612,7 +1199,7 @@ function App() {
 
   function onAddImage(dataUrl) {
     updatePresentation(p => {
-      const el = { id: uid('el'), type: 'image', x: 80, y: 120, w: 320, h: 240, rotation: 0, src: dataUrl };
+      const el = { id: uid('el'), type: 'image', x: 100, y: 150, w: 400, h: 300, rotation: 0, src: dataUrl };
       p.slides[currentSlide].elements.push(el);
       setSelectedElementId(el.id);
     });
@@ -620,7 +1207,7 @@ function App() {
 
   function onAddChart(chartType) {
     updatePresentation(p => {
-      const el = { id: uid('el'), type: 'chart', x: 80, y: 120, w: 400, h: 240, rotation: 0, chartType, data: { labels: ['A','B','C'], datasets: [{ label: 'Series 1', values: [3,5,2], color: '#4e79a7' }] } };
+      const el = { id: uid('el'), type: 'chart', x: 100, y: 150, w: 500, h: 300, rotation: 0, chartType, data: { labels: ['Q1','Q2','Q3','Q4'], datasets: [{ label: 'Sales', values: [65,78,85,92], color: '#4e79a7' }] } };
       p.slides[currentSlide].elements.push(el);
       setSelectedElementId(el.id);
       setShowChartEditor(true);
@@ -629,7 +1216,7 @@ function App() {
 
   function onAddShape(shapeType) {
     updatePresentation(p => {
-      const el = { id: uid('el'), type: 'shape', x: 200, y: 150, w: 200, h: shapeType==='line'?0:150, rotation: 0, shapeType, fill: '#4e79a7', stroke: '#000000', strokeWidth: 2 };
+      const el = { id: uid('el'), type: 'shape', x: 300, y: 200, w: 250, h: shapeType==='line'?4:200, rotation: 0, shapeType, fill: '#4e79a7', stroke: '#000000', strokeWidth: 2 };
       p.slides[currentSlide].elements.push(el);
       setSelectedElementId(el.id);
     });
@@ -684,38 +1271,224 @@ function App() {
   }
 
   function onSave() {
-    const payload = { ...presentation, id: presentation.id, name: presentation.name };
-    fetch('/api/presentations', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
-      .then(r=>r.json())
-      .then(d=>{
-        if (d && d.id) setPresentation(prev => ({ ...prev, id: d.id }));
-        alert('Saved');
-      })
-      .catch(()=> alert('Save failed'));
+    try {
+      // Check if PptxGenJS is available
+      if (typeof PptxGenJS === 'undefined') {
+        // Fallback to JSON export if PptxGenJS is not available
+        console.warn('PptxGenJS not available, falling back to JSON export');
+        const presentationData = {
+          ...presentation,
+          name: presentation.name || 'Untitled Presentation',
+          createdAt: new Date().toISOString(),
+          version: '1.0'
+        };
+        
+        const dataStr = JSON.stringify(presentationData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = `${presentationData.name}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        
+        // Save to localStorage for sharing functionality
+        const presentationId = presentation.id || 'ppt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem(`presentation_${presentationId}`, dataStr);
+        setPresentation(prev => ({ ...prev, id: presentationId }));
+        
+        alert(`PowerPoint library not available. Presentation "${presentationData.name}" saved as JSON file instead. Please refresh the page and try again for PowerPoint export.`);
+        return;
+      }
+      
+      // Create presentation data for localStorage (sharing functionality)
+      const presentationData = {
+        ...presentation,
+        name: presentation.name || 'Untitled Presentation',
+        createdAt: new Date().toISOString(),
+        version: '1.0'
+      };
+      
+      // Save to localStorage for sharing functionality
+      const presentationId = presentation.id || 'ppt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem(`presentation_${presentationId}`, JSON.stringify(presentationData));
+      setPresentation(prev => ({ ...prev, id: presentationId }));
+      
+      // Create actual PowerPoint file using PptxGenJS
+      const pptx = new PptxGenJS();
+      pptx.layout = 'LAYOUT_WIDE';
+      pptx.author = 'PPT Maker';
+      pptx.title = presentationData.name;
+      
+      presentation.slides.forEach(sl => {
+        const slide = pptx.addSlide();
+        slide.background = { color: (sl.background || '#ffffff').replace('#','') };
+        
+        sl.elements.forEach(el => {
+          try {
+            if (el.type === 'text') {
+              const textOptions = {
+                x: el.x/96,
+                y: el.y/96,
+                w: el.w/96,
+                h: el.h/96,
+                fontSize: el.styles?.fontSize || 18,
+                color: (el.styles?.color||'#111111').replace('#',''),
+                bold: el.styles?.fontWeight==='bold',
+                italic: el.styles?.fontStyle==='italic',
+                underline: el.styles?.textDecoration==='underline' ? { style: 'sng' } : false,
+                align: el.styles?.textAlign || 'left',
+                fontFace: el.styles?.fontFamily || 'Arial',
+                valign: 'top'
+              };
+              slide.addText(el.content || '', textOptions);
+            } else if (el.type === 'image') {
+              slide.addImage({ 
+                data: el.src, 
+                x: el.x/96, 
+                y: el.y/96, 
+                w: el.w/96, 
+                h: el.h/96 
+              });
+            } else if (el.type === 'chart') {
+              const labels = el.data?.labels || [];
+              const datasets = el.data?.datasets || [];
+              if (el.chartType === 'pie' && datasets.length > 0) {
+                const data = datasets[0].values.map((v,i)=>({ 
+                  name: labels[i]||'Item '+(i+1), 
+                  labels:[labels[i]||'Item '+(i+1)], 
+                  values:[v] 
+                }));
+                slide.addChart(pptx.charts.PIE, data, { 
+                  x: el.x/96, 
+                  y: el.y/96, 
+                  w: el.w/96, 
+                  h: el.h/96, 
+                  showTitle: false 
+                });
+              } else if (datasets.length > 0) {
+                const chartData = datasets.map(ds => ({ 
+                  name: ds.label, 
+                  labels, 
+                  values: ds.values 
+                }));
+                const chartType = el.chartType === 'line' ? pptx.charts.LINE : pptx.charts.BAR;
+                slide.addChart(chartType, chartData, { 
+                  x: el.x/96, 
+                  y: el.y/96, 
+                  w: el.w/96, 
+                  h: el.h/96, 
+                  barDir: 'col',
+                  showTitle: false,
+                  chartColors: datasets.map(ds=>(ds.color||'#4e79a7').replace('#',''))
+                });
+              }
+            } else if (el.type === 'shape') {
+              const opts = { 
+                x: el.x/96, 
+                y: el.y/96, 
+                w: el.w/96, 
+                h: el.h/96, 
+                fill: { color: (el.fill||'#4e79a7').replace('#','') }, 
+                line: { color: (el.stroke||'#000').replace('#',''), width: (el.strokeWidth||2)/12 } 
+              };
+              if (el.shapeType === 'rect') {
+                slide.addShape(pptx.shapes.RECTANGLE, opts);
+              } else if (el.shapeType === 'circle') {
+                slide.addShape(pptx.shapes.OVAL, opts);
+              } else if (el.shapeType === 'line') {
+                slide.addShape(pptx.shapes.LINE, { 
+                  x: el.x/96, 
+                  y: el.y/96, 
+                  w: el.w/96, 
+                  h: 0,
+                  line: { color: (el.stroke||'#000').replace('#',''), width: (el.strokeWidth||2)/12 } 
+                });
+              }
+            }
+          } catch (err) {
+            console.error('Error adding element to slide:', err);
+          }
+        });
+      });
+      
+      // Download the PowerPoint file
+      pptx.writeFile({ fileName: presentationData.name + '.pptx' });
+      alert(`Presentation "${presentationData.name}" saved and downloaded as PowerPoint file successfully!`);
+      
+    } catch (err) {
+      console.error('Save error:', err);
+      alert('Save failed: ' + err.message);
+    }
   }
 
   function onLoad() { setShowLoad(true); }
 
   function onLoadId(id) {
-    fetch('/api/presentations/'+encodeURIComponent(id))
-      .then(r=>r.json())
-      .then(data=>{
+    try {
+      // Try to load from localStorage first
+      const storedData = localStorage.getItem(`presentation_${id}`);
+      if (storedData) {
+        const data = JSON.parse(storedData);
         setPresentation(data);
         setCurrentSlide(0);
         setSelectedElementId(null);
         setHistory([JSON.stringify(data)]);
         setHistoryIndex(0);
         setShowLoad(false);
-      })
-      .catch(()=> alert('Load failed'));
+        return;
+      }
+      
+      // Fallback to API if available
+      fetch('/api/presentations/'+encodeURIComponent(id))
+        .then(r=>r.json())
+        .then(data=>{
+          setPresentation(data);
+          setCurrentSlide(0);
+          setSelectedElementId(null);
+          setHistory([JSON.stringify(data)]);
+          setHistoryIndex(0);
+          setShowLoad(false);
+        })
+        .catch(()=> {
+          alert('Load failed: Presentation not found');
+        });
+    } catch (err) {
+      console.error('Load error:', err);
+      alert('Load failed: ' + err.message);
+    }
   }
 
+
+
   function onShare() {
-    if (!presentation.id) {
-      alert('Please save the presentation first before sharing.');
-      return;
+    try {
+      // Always save current presentation data before sharing
+      let presentationId = presentation.id;
+      if (!presentationId) {
+        presentationId = 'ppt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      }
+      
+      const presentationData = {
+        ...presentation,
+        id: presentationId,
+        name: presentation.name || 'Untitled Presentation',
+        createdAt: new Date().toISOString(),
+        version: '1.0'
+      };
+      
+      // Always save/update in localStorage
+      localStorage.setItem(`presentation_${presentationId}`, JSON.stringify(presentationData));
+      setPresentation(prev => ({ ...prev, id: presentationId }));
+      
+      console.log('Presentation saved for sharing with ID:', presentationId);
+      setShowShareDialog(true);
+    } catch (err) {
+      console.error('Share error:', err);
+      alert('Share failed: ' + err.message);
     }
-    setShowShareDialog(true);
   }
 
   function onPresent() {
@@ -725,6 +1498,10 @@ function App() {
 
   function onExport() {
     try {
+      if (typeof PptxGenJS === 'undefined') {
+        alert('Export Failed: PptxGenJS library is not loaded. Please check your internet connection and try again.');
+        return;
+      }
       const pptx = new PptxGenJS();
       pptx.layout = 'LAYOUT_WIDE';
       pptx.author = 'PPT Maker';
@@ -758,10 +1535,10 @@ function App() {
               const datasets = el.data?.datasets || [];
               if (el.chartType === 'pie' && datasets.length > 0) {
                 const data = datasets[0].values.map((v,i)=>({ name: labels[i]||'Item '+(i+1), labels:[labels[i]||'Item '+(i+1)], values:[v] }));
-                slide.addChart(pptx.ChartType.pie, data, { x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96, showTitle: false });
+                slide.addChart(pptx.charts.PIE, data, { x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96, showTitle: false });
               } else if (datasets.length > 0) {
                 const chartData = datasets.map(ds => ({ name: ds.label, labels, values: ds.values }));
-                const chartType = el.chartType === 'line' ? pptx.ChartType.line : pptx.ChartType.bar;
+                const chartType = el.chartType === 'line' ? pptx.charts.LINE : pptx.charts.BAR;
                 slide.addChart(chartType, chartData, { 
                   x: el.x/96, 
                   y: el.y/96, 
@@ -835,27 +1612,23 @@ function App() {
         onChangeBackground={onChangeBackground}
         currentSlide={selectedSlide}
         onEditChart={()=>setShowChartEditor(true)}
+        onShowHelp={()=>setShowHelp(true)}
       />
 
       <div className="main">
         <div className="sidebar">
           <div className="sidebar-header">
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '8px' }}>SLIDES</div>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button 
-                onClick={()=>{ if(currentSlide > 0) { setCurrentSlide(currentSlide - 1); setSelectedElementId(null); }}} 
-                disabled={currentSlide === 0}
-                title="Previous slide (scroll up)"
-                style={{ flex: 1, padding: '6px' }}>
-                ▲ Prev
-              </button>
-              <button 
-                onClick={()=>{ if(currentSlide < presentation.slides.length - 1) { setCurrentSlide(currentSlide + 1); setSelectedElementId(null); }}} 
-                disabled={currentSlide === presentation.slides.length - 1}
-                title="Next slide (scroll down)"
-                style={{ flex: 1, padding: '6px' }}>
-                ▼ Next
-              </button>
+            <div
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: 'var(--color-text-muted)',
+                marginBottom: '12px',
+              }}
+            >
+              SLIDES ({presentation.slides.length})
             </div>
           </div>
           <div className="sidebar-slides">
@@ -864,16 +1637,21 @@ function App() {
                 key={s.id}
                 slide={s}
                 index={i}
-                active={i===currentSlide}
-                onClick={()=>{ setCurrentSlide(i); setSelectedElementId(null); }}
-                onDuplicate={()=>onDuplicateSlide(i)}
-                onDelete={()=>onDeleteSlide(i)}
-                onMoveUp={()=>onMoveSlide(i, 'up')}
-                onMoveDown={()=>onMoveSlide(i, 'down')}
+                total={presentation.slides.length}
+                active={i === currentSlide}
+                onClick={() => {
+                  setCurrentSlide(i);
+                  setSelectedElementId(null);
+                }}
+                onDuplicate={() => onDuplicateSlide(i)}
+                onDelete={() => onDeleteSlide(i)}
+                onMoveUp={() => onMoveSlide(i, 'up')}
+                onMoveDown={() => onMoveSlide(i, 'down')}
               />
             ))}
           </div>
         </div>
+        
         <div className="stage">
           {selectedSlide && (
             <Canvas
@@ -899,6 +1677,7 @@ function App() {
         }} onClose={()=> setShowChartEditor(false)} />
       )}
       {showShareDialog && <ShareDialog presentationId={presentation.id} onClose={()=>setShowShareDialog(false)} />}
+      {showHelp && <HelpDialog onClose={()=>setShowHelp(false)} />}
     </div>
   );
 }
@@ -906,28 +1685,38 @@ function App() {
 function ShareDialog({ presentationId, onClose }) {
   const shareUrl = `${window.location.origin}?presentation=${presentationId}`;
   const [copied, setCopied] = useState(false);
-  
+
   function copyToClipboard() {
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
   }
-  
+
   return (
     <div className="modal">
       <div className="modal-body">
         <h3>Share Presentation</h3>
-        <p style={{ color: '#6b7280', marginBottom: '16px' }}>Share this link with others to view your presentation:</p>
+        <p style={{ color: 'var(--color-text-muted)', marginBottom: '16px' }}>
+          Share this link to let anyone view your presentation. Updates you save will appear when they refresh.
+        </p>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          <input 
-            readOnly 
-            value={shareUrl} 
-            style={{ flex: 1, padding: '10px', border: '2px solid #e1e4e8', borderRadius: '6px', fontSize: '14px', background: '#f9fafb' }}
+          <input
+            readOnly
+            value={shareUrl}
+            style={{
+              flex: 1,
+              padding: '10px',
+              border: '1px solid var(--color-border)',
+              borderRadius: '6px',
+              fontSize: '14px',
+              background: 'var(--color-panel)',
+              color: 'var(--color-text-primary)',
+            }}
             onClick={(e) => e.target.select()}
           />
           <button onClick={copyToClipboard} style={{ padding: '10px 20px' }}>
-            {copied ? '✓ Copied!' : '📋 Copy'}
+            {copied ? 'Copied' : 'Copy Link'}
           </button>
         </div>
         <div className="actions">
@@ -936,9 +1725,60 @@ function ShareDialog({ presentationId, onClose }) {
       </div>
     </div>
   );
-}
+}function HelpDialog({ onClose }) {
+  const bodyTextStyle = { fontSize: '13px', lineHeight: '1.6', color: 'var(--color-text-secondary)' };
+  const listStyle = {
+    fontSize: '13px',
+    lineHeight: '1.6',
+    color: 'var(--color-text-secondary)',
+    paddingLeft: '18px',
+    margin: 0,
+  };
 
-function PresentationMode({ presentation, currentSlide, setCurrentSlide, onExit }) {
+  return (
+    <div className="modal">
+      <div className="modal-body">
+        <h3>Help & Keyboard Shortcuts</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+          <div>
+            <h4>Navigation</h4>
+            <div style={bodyTextStyle}>
+              <div><strong>Page Up/Down:</strong> Navigate slides</div>
+              <div><strong>Arrow Keys:</strong> Move selected element</div>
+              <div><strong>Shift + Arrow:</strong> Move element 10px</div>
+              <div><strong>Delete/Backspace:</strong> Delete element</div>
+            </div>
+          </div>
+          <div>
+            <h4>File Operations</h4>
+            <div style={bodyTextStyle}>
+              <div><strong>Ctrl+S:</strong> Save presentation</div>
+              <div><strong>Ctrl+Z:</strong> Undo</div>
+              <div><strong>Ctrl+Y / Shift+Ctrl+Z:</strong> Redo</div>
+              <div><strong>Ctrl+N:</strong> New slide</div>
+              <div><strong>F5:</strong> Present</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ marginBottom: '20px' }}>
+          <h4>Features</h4>
+          <ul style={listStyle}>
+            <li><strong>16:9 Widescreen Format:</strong> Professional presentation canvas</li>
+            <li><strong>Responsive UI:</strong> Works across desktop, tablet, and mobile</li>
+            <li><strong>Rich Text Formatting:</strong> Fonts, alignment, weights, and colors</li>
+            <li><strong>Charts & Shapes:</strong> Bar, line, pie charts and basic shapes</li>
+            <li><strong>Image Support:</strong> Upload and reposition images with drag handles</li>
+            <li><strong>Export to PowerPoint:</strong> Download as .pptx file</li>
+            <li><strong>Shareable Links:</strong> Send view-only access in one click</li>
+          </ul>
+        </div>
+        <div className="actions">
+          <button onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}function PresentationMode({ presentation, currentSlide, setCurrentSlide, onExit }) {
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.key === 'Escape') {
@@ -964,29 +1804,33 @@ function PresentationMode({ presentation, currentSlide, setCurrentSlide, onExit 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide, presentation.slides.length, onExit, setCurrentSlide]);
-  
+
   const slide = presentation.slides[currentSlide];
   if (!slide) return null;
-  
+
   return (
     <div className="presentation-mode">
-      <div className="presentation-slide" style={{ background: slide.background }}>
+      <div className="presentation-slide" style={{ background: slide.background, aspectRatio: '4/3', maxWidth: '100vw', maxHeight: '100vh' }}>
         {slide.elements.map(el => {
           const style = { left: el.x, top: el.y, width: el.w, height: el.h, transform: `rotate(${el.rotation||0}deg)` };
           if (el.type === 'text') {
             return (
-              <div key={el.id} className="present-text-el" style={{
-                ...style,
-                fontSize: el.styles?.fontSize,
-                color: el.styles?.color,
-                fontWeight: el.styles?.fontWeight,
-                fontStyle: el.styles?.fontStyle,
-                textDecoration: el.styles?.textDecoration,
-                textAlign: el.styles?.textAlign,
-                fontFamily: el.styles?.fontFamily || 'Arial',
-                whiteSpace: 'pre-wrap',
-                padding: '4px',
-              }}>
+              <div
+                key={el.id}
+                className="present-text-el"
+                style={{
+                  ...style,
+                  fontSize: el.styles?.fontSize,
+                  color: el.styles?.color,
+                  fontWeight: el.styles?.fontWeight,
+                  fontStyle: el.styles?.fontStyle,
+                  textDecoration: el.styles?.textDecoration,
+                  textAlign: el.styles?.textAlign,
+                  fontFamily: el.styles?.fontFamily || 'Arial',
+                  whiteSpace: 'pre-wrap',
+                  padding: '4px',
+                }}
+              >
                 {el.content}
               </div>
             );
@@ -1016,11 +1860,23 @@ function PresentationMode({ presentation, currentSlide, setCurrentSlide, onExit 
         })}
       </div>
       <div className="presentation-controls">
-        <button onClick={onExit} title="Exit (Esc)">✕ Exit</button>
+        <button onClick={onExit} title="Exit (Esc)">Exit</button>
         <span className="slide-counter">{currentSlide + 1} / {presentation.slides.length}</span>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => currentSlide > 0 && setCurrentSlide(currentSlide - 1)} disabled={currentSlide === 0}>← Previous</button>
-          <button onClick={() => currentSlide < presentation.slides.length - 1 && setCurrentSlide(currentSlide + 1)} disabled={currentSlide === presentation.slides.length - 1}>Next →</button>
+          <button
+            onClick={() => currentSlide > 0 && setCurrentSlide(currentSlide - 1)}
+            disabled={currentSlide === 0}
+            title="Previous slide"
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => currentSlide < presentation.slides.length - 1 && setCurrentSlide(currentSlide + 1)}
+            disabled={currentSlide === presentation.slides.length - 1}
+            title="Next slide"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
@@ -1028,3 +1884,12 @@ function PresentationMode({ presentation, currentSlide, setCurrentSlide, onExit 
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+
+
+
+
+
+
+
+
