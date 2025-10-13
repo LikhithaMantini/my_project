@@ -1,4 +1,4 @@
-const { useState, useEffect, useRef, useCallback, useMemo } = React;
+const { useState, useEffect, useRef, useMemo } = React;
 
 // Debug function to check library availability
 function checkLibraryStatus() {
@@ -32,6 +32,42 @@ const TOOLBAR_TABS = [
   { id: 'design', label: 'Design' },
   { id: 'format', label: 'Format', requiresSelection: true },
 ];
+
+const THEME_OPTIONS = [
+  {
+    id: 'default',
+    name: 'Classic Light',
+    description: 'Bright neutrals with charcoal text',
+    slideBackground: '#ffffff',
+    textColor: '#111111',
+  },
+  {
+    id: 'midnight',
+    name: 'Midnight Noir',
+    description: 'Deep charcoal with soft contrast text',
+    slideBackground: '#1f1f24',
+    textColor: '#f5f6f7',
+  },
+  {
+    id: 'ocean',
+    name: 'Ocean Mist',
+    description: 'Cool blues with crisp white typography',
+    slideBackground: '#0f172a',
+    textColor: '#f8fafc',
+  },
+  {
+    id: 'sunrise',
+    name: 'Sunrise Glow',
+    description: 'Warm gradient-inspired palette',
+    slideBackground: '#fff7ed',
+    textColor: '#1f2937',
+  },
+];
+
+const THEMES = THEME_OPTIONS.reduce((acc, theme) => {
+  acc[theme.id] = theme;
+  return acc;
+}, {});
 
 // Searchable Font Dropdown Component
 function FontDropdown({ value, onChange, title }) {
@@ -150,7 +186,9 @@ function FontDropdown({ value, onChange, title }) {
       )}
     </div>
   );
-}function defaultPresentation() {
+}
+
+function defaultPresentation() {
   return {
     name: 'Untitled Presentation',
     theme: 'default',
@@ -159,15 +197,15 @@ function FontDropdown({ value, onChange, title }) {
 }
 
 function makeSlide(template = 'blank', theme = 'default') {
-  // Standard 4:3 aspect ratio (960x720 for better compatibility)
-  const slide = { id: uid('slide'), background: theme === 'dark' ? '#1a1a1a' : '#ffffff', elements: [] };
-  const textColor = theme === 'dark' ? '#ffffff' : '#111111';
+  const themeConfig = THEMES[theme] || THEMES.default;
+  const slide = { id: uid('slide'), background: themeConfig.slideBackground, elements: [] };
+  const textColor = themeConfig.textColor;
   if (template === 'title') {
-    slide.elements.push({ id: uid('el'), type: 'text', x: 80, y: 180, w: 800, h: 100, rotation: 0, styles: { fontSize: 44, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'center', fontFamily: 'Arial' }, content: 'Click to add title' });
-    slide.elements.push({ id: uid('el'), type: 'text', x: 80, y: 320, w: 800, h: 80, rotation: 0, styles: { fontSize: 24, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'center', fontFamily: 'Arial' }, content: 'Click to add subtitle' });
+    slide.elements.push({ id: uid('el'), type: 'text', x: 80, y: 180, w: 800, h: 100, rotation: 0, styles: { fontSize: 44, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'center', fontFamily: 'Arial', lineHeight: 1.2, listStyle: 'none' }, content: 'Click to add title' });
+    slide.elements.push({ id: uid('el'), type: 'text', x: 80, y: 320, w: 800, h: 80, rotation: 0, styles: { fontSize: 24, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'center', fontFamily: 'Arial', lineHeight: 1.2, listStyle: 'none' }, content: 'Click to add subtitle' });
   } else if (template === 'titleContent') {
-    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 50, w: 840, h: 80, rotation: 0, styles: { fontSize: 32, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: 'Click to add title' });
-    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 160, w: 840, h: 400, rotation: 0, styles: { fontSize: 18, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: '• Click to add content\n• Add your key points here\n• Use bullet points for clarity' });
+    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 50, w: 840, h: 80, rotation: 0, styles: { fontSize: 32, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial', lineHeight: 1.2, listStyle: 'none' }, content: 'Click to add title' });
+    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 160, w: 840, h: 400, rotation: 0, styles: { fontSize: 18, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial', lineHeight: 1.4, listStyle: 'bullet' }, content: '• Click to add content\n• Add your key points here\n• Use bullet points for clarity' });
   }
   return slide;
 }
@@ -196,17 +234,34 @@ function Toolbar({
   onChangeBackground,
   currentSlide,
   onEditChart,
-  onShowHelp,
+  onApplyTheme,
+  currentTheme,
+  onApplyListStyle,
 }) {
   const fileRef = useRef();
   const [activeTab, setActiveTab] = useState('file');
+  const [toolbarVisible, setToolbarVisible] = useState(false);
   const isText = selectedElement?.type === 'text';
   const isShape = selectedElement?.type === 'shape';
   const isChart = selectedElement?.type === 'chart';
+  const prevSelectedTypeRef = useRef(null);
   const availableTabs = useMemo(
     () => TOOLBAR_TABS.filter(tab => !tab.requiresSelection || selectedElement),
     [selectedElement]
   );
+
+  useEffect(() => {
+    const prevType = prevSelectedTypeRef.current;
+    const currentType = selectedElement?.type || null;
+
+    if (currentType === 'text' && prevType !== 'text') {
+      setActiveTab('format');
+    } else if (!currentType && prevType === 'text') {
+      setActiveTab('file');
+    }
+
+    prevSelectedTypeRef.current = currentType;
+  }, [selectedElement]);
 
   useEffect(() => {
     if (!availableTabs.some(tab => tab.id === activeTab)) {
@@ -214,10 +269,18 @@ function Toolbar({
     }
   }, [activeTab, availableTabs]);
 
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId);
+    if (tabId === 'file' || tabId === 'insert' || tabId === 'design' || tabId === 'format') {
+      setToolbarVisible(true);
+    } else {
+      setToolbarVisible(false);
+    }
+  };
+
   const renderFileTab = () => (
-    <div className="toolbar-group">
+    <div className="toolbar-group file-toolbar-group">
       <div className="tool-section">
-        <label className="section-label">File Operations</label>
         <div className="file-menu-item" onClick={onSave} title="Save presentation" tabIndex={0} 
              onKeyDown={(e) => e.key === 'Enter' && onSave()}>
           <div className="file-menu-icon">
@@ -230,106 +293,6 @@ function Toolbar({
           <div className="file-menu-content">
             <div className="file-menu-title">Save</div>
             <div className="file-menu-desc">Download as PowerPoint (.pptx)</div>
-          </div>
-        </div>
-        <div className="file-menu-item" onClick={() => {
-          const customName = prompt('Enter filename:', presentation.name || 'My Presentation');
-          if (customName && customName.trim()) {
-            // Update presentation name and save
-            setPresentation(prev => ({ ...prev, name: customName.trim() }));
-            // Call save with the new name
-            setTimeout(() => {
-              const payload = { ...presentation, name: customName.trim() };
-              fetch('/api/presentations', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
-                .then(r=>r.json())
-                .then(d=>{
-                  if (d && d.id) {
-                    setPresentation(prev => ({ ...prev, id: d.id, name: customName.trim() }));
-                    alert(`Presentation saved as "${customName.trim()}" successfully!`);
-                  } else {
-                    alert('Save failed: Invalid response from server');
-                  }
-                })
-                .catch(err=> {
-                  console.error('Save error:', err);
-                  alert('Save failed: Could not connect to server');
-                });
-            }, 100);
-          }
-        }} title="Save with custom filename">
-          <div className="file-menu-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14,2 14,8 20,8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10,9 9,9 8,9"/>
-            </svg>
-          </div>
-          <div className="file-menu-content">
-            <div className="file-menu-title">Save As</div>
-            <div className="file-menu-desc">Save with custom filename</div>
-          </div>
-        </div>
-        <div className="file-menu-item" onClick={() => {
-          // Export as PDF functionality
-          if (window.confirm('Export as PDF? This will open the presentation in a new window for printing to PDF.')) {
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <title>${presentation.name || 'Presentation'}</title>
-                <style>
-                  body { margin: 0; font-family: Arial, sans-serif; }
-                  .slide-page { width: 100vw; height: 100vh; page-break-after: always; position: relative; display: flex; align-items: center; justify-content: center; }
-                  .slide-content { width: 1280px; height: 720px; position: relative; transform: scale(0.7); }
-                  .element { position: absolute; }
-                  .text-element { white-space: pre-wrap; }
-                  @media print { .slide-page { page-break-after: always; } }
-                </style>
-              </head>
-              <body>
-                ${presentation.slides.map(slide => `
-                  <div class="slide-page" style="background: ${slide.background}">
-                    <div class="slide-content">
-                      ${slide.elements.map(el => {
-                        if (el.type === 'text') {
-                          return `<div class="element text-element" style="
-                            left: ${el.x}px; top: ${el.y}px; width: ${el.w}px; height: ${el.h}px;
-                            font-size: ${el.styles?.fontSize || 18}px;
-                            color: ${el.styles?.color || '#000'};
-                            font-weight: ${el.styles?.fontWeight || 'normal'};
-                            font-style: ${el.styles?.fontStyle || 'normal'};
-                            text-decoration: ${el.styles?.textDecoration || 'none'};
-                            text-align: ${el.styles?.textAlign || 'left'};
-                            font-family: ${el.styles?.fontFamily || 'Arial'};
-                          ">${el.content || ''}</div>`;
-                        }
-                        return '';
-                      }).join('')}
-                    </div>
-                  </div>
-                `).join('')}
-              </body>
-              </html>
-            `);
-            printWindow.document.close();
-            setTimeout(() => printWindow.print(), 500);
-          }
-        }} title="Export as PDF">
-          <div className="file-menu-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14,2 14,8 20,8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <line x1="10" y1="9" x2="8" y2="9"/>
-            </svg>
-          </div>
-          <div className="file-menu-content">
-            <div className="file-menu-title">Export as PDF</div>
-            <div className="file-menu-desc">Print or save as PDF</div>
           </div>
         </div>
         <div className="file-menu-item" onClick={onExport} title="Export to PowerPoint">
@@ -361,14 +324,27 @@ function Toolbar({
             <div className="file-menu-desc">Generate shareable link</div>
           </div>
         </div>
-      </div>
-      <div className="tool-divider"></div>
-      <div className="tool-section">
-        <label className="section-label">History</label>
-        <button onClick={onUndo} disabled={!canUndo} title="Undo">Undo</button>
-        <button onClick={onRedo} disabled={!canRedo} title="Redo">Redo</button>
-        <button onClick={onLoad} title="Open saved presentation">Open</button>
-        <button onClick={onShowHelp} title="Help & keyboard shortcuts">Help</button>
+        <div className="history-theme-inline">
+          <div className="history-actions">
+            <label className="section-label">History</label>
+            <button onClick={onUndo} disabled={!canUndo} title="Undo">Undo</button>
+            <button onClick={onRedo} disabled={!canRedo} title="Redo">Redo</button>
+            <button onClick={onLoad} title="Open saved presentation">Open</button>
+          </div>
+          <div className="theme-actions">
+            <label className="section-label">Themes</label>
+            {THEME_OPTIONS.map((theme) => (
+              <button
+                key={theme.id}
+                onClick={() => onApplyTheme(theme.id)}
+                className={currentTheme === theme.id ? 'active' : ''}
+                title={theme.description}
+              >
+                {theme.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -434,7 +410,6 @@ function Toolbar({
       </div>
     </div>
   );
-
 
   const renderFormatTab = () => {
     if (!selectedElement) return null;
@@ -522,41 +497,76 @@ function Toolbar({
                 onChange={(font) => onChangeProp('fontFamily', font)}
                 title="Font family"
               />
+              <label className="section-label" style={{ marginLeft: '8px' }}>Spacing</label>
+              <input
+                type="number"
+                min="1"
+                max="3"
+                step="0.1"
+                value={selectedElement.styles?.lineHeight ?? 1.2}
+                onChange={(e) => onChangeProp('lineHeight', parseFloat(e.target.value) || 1.2)}
+                title="Line spacing"
+                style={{ width: '60px' }}
+              />
+            </div>
+            <div className="tool-divider"></div>
+            <div className="tool-section">
+              <label className="section-label">Lists</label>
+              <button
+                onClick={() => onApplyListStyle('bullet')}
+                className={selectedElement.styles?.listStyle === 'bullet' ? 'active' : ''}
+                title="Toggle bullet list"
+              >
+                Bullets
+              </button>
+              <button
+                onClick={() => onApplyListStyle('number')}
+                className={selectedElement.styles?.listStyle === 'number' ? 'active' : ''}
+                title="Toggle numbered list"
+              >
+                Numbers
+              </button>
             </div>
           </>
         )}
         {isShape && (
-          <div className="tool-section">
-            <label className="section-label">Shape Style</label>
-            <input
-              type="color"
-              value={selectedElement.fill || '#4e79a7'}
-              onChange={(e) => onChangeProp('fill', e.target.value)}
-              title="Fill color"
-            />
-            <input
-              type="color"
-              value={selectedElement.stroke || '#000000'}
-              onChange={(e) => onChangeProp('stroke', e.target.value)}
-              title="Stroke color"
-            />
-            <input
-              type="number"
-              min="0"
-              max="20"
-              value={selectedElement.strokeWidth || 2}
-              onChange={(e) => onChangeProp('strokeWidth', parseInt(e.target.value || '2', 10))}
-              title="Stroke width"
-              style={{ width: '60px' }}
-            />
-          </div>
+          <>
+            {(isText) && <div className="tool-divider"></div>}
+            <div className="tool-section">
+              <label className="section-label">Shape Style</label>
+              <input
+                type="color"
+                value={selectedElement.fill || '#4e79a7'}
+                onChange={(e) => onChangeProp('fill', e.target.value)}
+                title="Fill color"
+              />
+              <input
+                type="color"
+                value={selectedElement.stroke || '#000000'}
+                onChange={(e) => onChangeProp('stroke', e.target.value)}
+                title="Stroke color"
+              />
+              <input
+                type="number"
+                min="0"
+                max="20"
+                value={selectedElement.strokeWidth || 2}
+                onChange={(e) => onChangeProp('strokeWidth', parseInt(e.target.value || '2', 10))}
+                title="Stroke width"
+                style={{ width: '60px' }}
+              />
+            </div>
+          </>
         )}
         {isChart && (
-          <div className="tool-section">
-            <button onClick={onEditChart} title="Edit chart data">Edit Chart Data</button>
-          </div>
+          <>
+            {(isText || isShape) && <div className="tool-divider"></div>}
+            <div className="tool-section">
+              <button onClick={onEditChart} title="Edit chart data">Edit Chart Data</button>
+            </div>
+          </>
         )}
-        <div className="tool-divider"></div>
+        {(isText || isShape || isChart) && <div className="tool-divider"></div>}
         <div className="tool-section">
           <button onClick={onDeleteElement} title="Remove selected element" className="delete-btn">
             Delete Element
@@ -566,6 +576,8 @@ function Toolbar({
     );
   };
 
+  const shouldShowToolbarContent = toolbarVisible || activeTab === 'format';
+
   return (
     <div className="toolbar-compact">
       <div className="toolbar-header">
@@ -574,7 +586,7 @@ function Toolbar({
             <div
               key={tab.id}
               className={`toolbar-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
             >
               {tab.label}
             </div>
@@ -591,15 +603,36 @@ function Toolbar({
         </button>
       </div>
 
-      <div className="toolbar-content">
-        {activeTab === 'file' && renderFileTab()}
-        {activeTab === 'insert' && renderInsertTab()}
-        {activeTab === 'design' && renderDesignTab()}
-        {activeTab === 'format' && renderFormatTab()}
-      </div>
+      {shouldShowToolbarContent && (
+        <div className="toolbar-content">
+          {activeTab === 'file' && renderFileTab()}
+          {activeTab === 'insert' && renderInsertTab()}
+          {activeTab === 'design' && renderDesignTab()}
+          {activeTab === 'format' && renderFormatTab()}
+        </div>
+      )}
     </div>
   );
-}function SlideThumb({ slide, index, total, active, onClick, onDuplicate, onDelete, onMoveUp, onMoveDown }) {
+}
+
+function SlideThumb({
+  slide,
+  index,
+  total,
+  active,
+  onClick,
+  onDuplicate,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragLeave,
+  onDragEnd,
+  isDragging,
+  isDragOver,
+}) {
   const thumbRef = useRef();
   const canMoveUp = index > 0;
   const canMoveDown = index < (total - 1);
@@ -610,8 +643,44 @@ function Toolbar({
     }
   }, [active]);
 
+  const handleDragStart = (event) => {
+    if (!onDragStart) return;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(index));
+    onDragStart(index);
+  };
+
+  const handleDragOver = (event) => {
+    if (!onDragOver) return;
+    event.preventDefault();
+    onDragOver(index);
+  };
+
+  const handleDrop = (event) => {
+    if (!onDrop) return;
+    event.preventDefault();
+    onDrop(index);
+  };
+
+  const handleDragLeave = () => {
+    if (onDragLeave) onDragLeave(index);
+  };
+
+  const handleDragEnd = () => {
+    if (onDragEnd) onDragEnd();
+  };
+
   return (
-    <div ref={thumbRef} className={"slide-thumb" + (active ? ' active' : '')}>
+    <div
+      ref={thumbRef}
+      className={`slide-thumb${active ? ' active' : ''}${isDragging ? ' dragging' : ''}${isDragOver ? ' drag-over' : ''}`}
+      draggable
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      onDragLeave={handleDragLeave}
+      onDragEnd={handleDragEnd}
+    >
       <div className="slide-thumb-inner" style={{ background: slide.background, aspectRatio: '4/3' }} onClick={onClick}>
         {slide.elements.slice(0, 2).map(el => (
           <div key={el.id} className="thumb-el" />
@@ -630,7 +699,9 @@ function Toolbar({
       </div>
     </div>
   );
-}function ChartElement({ element }) {
+}
+
+function ChartElement({ element }) {
   const ref = useRef();
   useEffect(()=>{
     if (!ref.current) return;
@@ -686,6 +757,7 @@ function Canvas({ slide, selectedElementId, onSelect, onChangeText, onDragStart,
                 textDecoration: el.styles?.textDecoration,
                 textAlign: el.styles?.textAlign,
                 fontFamily: el.styles?.fontFamily || 'Arial',
+                lineHeight: el.styles?.lineHeight || 1.2,
               }} />
               {selected && <ResizeHandles onResizeStart={(dir)=>onResizeStart(el.id, dir)} />}
               {selected && <DragHandle onDragStart={()=>onDragStart(el.id)} />}
@@ -877,7 +949,9 @@ function LoadDialog({ onClose, onLoadId }) {
       </div>
     </div>
   );
-}function ChartEditor({ element, onUpdate, onClose }) {
+}
+
+function ChartEditor({ element, onUpdate, onClose }) {
   const [chartType, setChartType] = useState(element.chartType || 'bar');
   const [labels, setLabels] = useState((element.data?.labels||['A','B','C']).join(','));
   const [datasets, setDatasets] = useState(element.data?.datasets || [{ label: 'Series 1', values: [3,5,2], color: '#4e79a7' }]);
@@ -960,10 +1034,11 @@ function App() {
   const [showLoad, setShowLoad] = useState(false);
   const [showChartEditor, setShowChartEditor] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
   const [presentMode, setPresentMode] = useState(false);
   const [dragging, setDragging] = useState(null);
   const [resizing, setResizing] = useState(null);
+  const [draggingSlideIndex, setDraggingSlideIndex] = useState(null);
+  const [dragOverSlideIndex, setDragOverSlideIndex] = useState(null);
   
   const selectedSlide = presentation.slides[currentSlide];
   const selectedElement = selectedSlide?.elements.find(e=>e.id===selectedElementId) || null;
@@ -1189,9 +1264,20 @@ function App() {
     });
   }
 
+  function onReorderSlides(sourceIndex, destinationIndex) {
+    if (sourceIndex === destinationIndex || sourceIndex == null || destinationIndex == null) return;
+    updatePresentation(p => {
+      const slides = p.slides;
+      const [moved] = slides.splice(sourceIndex, 1);
+      slides.splice(destinationIndex, 0, moved);
+      setCurrentSlide(destinationIndex);
+    });
+  }
+
   function onAddText() {
     updatePresentation(p => {
-      const el = { id: uid('el'), type: 'text', x: 100, y: 150, w: 500, h: 100, rotation: 0, styles: { fontSize: 24, color: '#111111', fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial' }, content: 'Click to edit text' };
+      const themeConfig = THEMES[p.theme] || THEMES.default;
+      const el = { id: uid('el'), type: 'text', x: 100, y: 150, w: 500, h: 100, rotation: 0, styles: { fontSize: 24, color: themeConfig.textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial', lineHeight: 1.4, listStyle: 'none' }, content: 'Click to edit text' };
       p.slides[currentSlide].elements.push(el);
       setSelectedElementId(el.id);
     });
@@ -1207,10 +1293,9 @@ function App() {
 
   function onAddChart(chartType) {
     updatePresentation(p => {
-      const el = { id: uid('el'), type: 'chart', x: 100, y: 150, w: 500, h: 300, rotation: 0, chartType, data: { labels: ['Q1','Q2','Q3','Q4'], datasets: [{ label: 'Sales', values: [65,78,85,92], color: '#4e79a7' }] } };
+      const el = { id: uid('el'), type: 'chart', x: 100, y: 150, w: 400, h: 300, rotation: 0, chartType, data: { labels: ['A','B','C'], datasets: [{ label: 'Series', values: [3,5,2], color: '#4e79a7' }] } };
       p.slides[currentSlide].elements.push(el);
       setSelectedElementId(el.id);
-      setShowChartEditor(true);
     });
   }
 
@@ -1242,6 +1327,40 @@ function App() {
       } else {
         el[prop] = value;
       }
+    });
+  }
+
+  function onApplyListStyle(styleType) {
+    if (!selectedElementId) return;
+    updatePresentation(p => {
+      const el = p.slides[currentSlide].elements.find(e => e.id === selectedElementId);
+      if (!el || el.type !== 'text') return;
+
+      if (!el.styles) el.styles = {};
+      const currentStyle = el.styles.listStyle || 'none';
+      const nextStyle = currentStyle === styleType ? 'none' : styleType;
+
+      const stripMarkers = (line) => line.replace(/^\s*•\s*/, '').replace(/^\s*\d+[).\-]\s*/, '');
+      const lines = (el.content || '').split('\n');
+
+      if (nextStyle === 'bullet') {
+        el.content = lines.map(line => {
+          const trimmed = stripMarkers(line).trim();
+          if (!trimmed) return '';
+          return `• ${trimmed}`;
+        }).join('\n');
+      } else if (nextStyle === 'number') {
+        let counter = 1;
+        el.content = lines.map(line => {
+          const trimmed = stripMarkers(line).trim();
+          if (!trimmed) return '';
+          return `${counter++}. ${trimmed}`;
+        }).join('\n');
+      } else {
+        el.content = lines.map(line => stripMarkers(line)).join('\n');
+      }
+
+      el.styles.listStyle = nextStyle;
     });
   }
 
@@ -1461,8 +1580,6 @@ function App() {
     }
   }
 
-
-
   function onShare() {
     try {
       // Always save current presentation data before sharing
@@ -1583,6 +1700,25 @@ function App() {
     }
   }
 
+  function onApplyTheme(themeId) {
+    if (!THEMES[themeId]) return;
+    updatePresentation(p => {
+      const prevThemeConfig = THEMES[p.theme] || THEMES.default;
+      const nextThemeConfig = THEMES[themeId];
+      p.theme = themeId;
+      p.slides.forEach(slide => {
+        if (prevThemeConfig && slide.background === prevThemeConfig.slideBackground) {
+          slide.background = nextThemeConfig.slideBackground;
+        }
+        slide.elements.forEach(el => {
+          if (el.type === 'text' && el.styles && el.styles.color === prevThemeConfig.textColor) {
+            el.styles.color = nextThemeConfig.textColor;
+          }
+        });
+      });
+    });
+  }
+
   if (presentMode) {
     return <PresentationMode presentation={presentation} currentSlide={currentSlide} setCurrentSlide={setCurrentSlide} onExit={()=>setPresentMode(false)} />;
   }
@@ -1599,20 +1735,22 @@ function App() {
         onChangeProp={onChangeProp}
         selectedElement={selectedElement}
         onSave={onSave}
-        onLoad={onLoad}
+        onLoad={() => setShowLoad(true)}
         onExport={onExport}
-        onShare={onShare}
-        onPresent={onPresent}
+        onShare={() => setShowShareDialog(true)}
+        onPresent={() => setPresentMode(true)}
         presentationName={presentation.name}
-        setPresentationName={(name)=> setPresentation(prev=> ({...prev, name}))}
+        setPresentationName={(name) => setPresentation(prev => ({ ...prev, name }))}
         onUndo={onUndo}
         onRedo={onRedo}
         canUndo={historyIndex > 0}
         canRedo={historyIndex < history.length - 1}
         onChangeBackground={onChangeBackground}
         currentSlide={selectedSlide}
-        onEditChart={()=>setShowChartEditor(true)}
-        onShowHelp={()=>setShowHelp(true)}
+        onEditChart={() => setShowChartEditor(true)}
+        onApplyTheme={onApplyTheme}
+        currentTheme={presentation.theme}
+        onApplyListStyle={onApplyListStyle}
       />
 
       <div className="main">
@@ -1647,11 +1785,34 @@ function App() {
                 onDelete={() => onDeleteSlide(i)}
                 onMoveUp={() => onMoveSlide(i, 'up')}
                 onMoveDown={() => onMoveSlide(i, 'down')}
+                onDragStart={(index) => {
+                  setDraggingSlideIndex(index);
+                  setDragOverSlideIndex(index);
+                }}
+                onDragOver={(index) => {
+                  if (draggingSlideIndex === null) return;
+                  setDragOverSlideIndex(index);
+                }}
+                onDrop={(index) => {
+                  if (draggingSlideIndex === null) return;
+                  onReorderSlides(draggingSlideIndex, index);
+                  setDraggingSlideIndex(null);
+                  setDragOverSlideIndex(null);
+                }}
+                onDragLeave={() => {
+                  setDragOverSlideIndex(prev => (prev === i ? null : prev));
+                }}
+                onDragEnd={() => {
+                  setDraggingSlideIndex(null);
+                  setDragOverSlideIndex(null);
+                }}
+                isDragging={draggingSlideIndex === i}
+                isDragOver={dragOverSlideIndex === i && draggingSlideIndex !== i}
               />
             ))}
           </div>
         </div>
-        
+
         <div className="stage">
           {selectedSlide && (
             <Canvas
@@ -1677,7 +1838,6 @@ function App() {
         }} onClose={()=> setShowChartEditor(false)} />
       )}
       {showShareDialog && <ShareDialog presentationId={presentation.id} onClose={()=>setShowShareDialog(false)} />}
-      {showHelp && <HelpDialog onClose={()=>setShowHelp(false)} />}
     </div>
   );
 }
@@ -1718,59 +1878,6 @@ function ShareDialog({ presentationId, onClose }) {
           <button onClick={copyToClipboard} style={{ padding: '10px 20px' }}>
             {copied ? 'Copied' : 'Copy Link'}
           </button>
-        </div>
-        <div className="actions">
-          <button onClick={onClose}>Close</button>
-        </div>
-      </div>
-    </div>
-  );
-}function HelpDialog({ onClose }) {
-  const bodyTextStyle = { fontSize: '13px', lineHeight: '1.6', color: 'var(--color-text-secondary)' };
-  const listStyle = {
-    fontSize: '13px',
-    lineHeight: '1.6',
-    color: 'var(--color-text-secondary)',
-    paddingLeft: '18px',
-    margin: 0,
-  };
-
-  return (
-    <div className="modal">
-      <div className="modal-body">
-        <h3>Help & Keyboard Shortcuts</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-          <div>
-            <h4>Navigation</h4>
-            <div style={bodyTextStyle}>
-              <div><strong>Page Up/Down:</strong> Navigate slides</div>
-              <div><strong>Arrow Keys:</strong> Move selected element</div>
-              <div><strong>Shift + Arrow:</strong> Move element 10px</div>
-              <div><strong>Delete/Backspace:</strong> Delete element</div>
-            </div>
-          </div>
-          <div>
-            <h4>File Operations</h4>
-            <div style={bodyTextStyle}>
-              <div><strong>Ctrl+S:</strong> Save presentation</div>
-              <div><strong>Ctrl+Z:</strong> Undo</div>
-              <div><strong>Ctrl+Y / Shift+Ctrl+Z:</strong> Redo</div>
-              <div><strong>Ctrl+N:</strong> New slide</div>
-              <div><strong>F5:</strong> Present</div>
-            </div>
-          </div>
-        </div>
-        <div style={{ marginBottom: '20px' }}>
-          <h4>Features</h4>
-          <ul style={listStyle}>
-            <li><strong>16:9 Widescreen Format:</strong> Professional presentation canvas</li>
-            <li><strong>Responsive UI:</strong> Works across desktop, tablet, and mobile</li>
-            <li><strong>Rich Text Formatting:</strong> Fonts, alignment, weights, and colors</li>
-            <li><strong>Charts & Shapes:</strong> Bar, line, pie charts and basic shapes</li>
-            <li><strong>Image Support:</strong> Upload and reposition images with drag handles</li>
-            <li><strong>Export to PowerPoint:</strong> Download as .pptx file</li>
-            <li><strong>Shareable Links:</strong> Send view-only access in one click</li>
-          </ul>
         </div>
         <div className="actions">
           <button onClick={onClose}>Close</button>

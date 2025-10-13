@@ -41,6 +41,37 @@ button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 1px 2px r
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 button.active { background: linear-gradient(135deg, #2a2a2a, #1a1a1a); color: #fff; border-color: #2a2a2a; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
 button.active:hover { background: linear-gradient(135deg, #3a3a3a, #2a2a2a); }
+
+.file-toolbar-group {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.file-toolbar-group .tool-section {
+  flex-wrap: nowrap;
+  gap: 12px;
+}
+
+.file-toolbar-group .file-menu-item {
+  padding: 10px 12px;
+  min-width: 220px;
+}
+
+.history-theme-inline {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+
+.history-theme-inline .history-actions,
+.history-theme-inline .theme-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
 label { font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 input[type="number"] { width: 60px; padding: 5px 8px; border: 2px solid #d0d0d0; border-radius: 6px; font-size: 13px; transition: border-color 0.2s; }
 input[type="number"]:focus { outline: none; border-color: #4a4a4a; }
@@ -60,6 +91,8 @@ select:focus { outline: none; border-color: #4a4a4a; }
 .slide-thumb { border: 2px solid #d0d0d0; background: #fff; margin-bottom: 12px; padding: 6px; border-radius: 8px; position: relative; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
 .slide-thumb:hover { border-color: #b0b0b0; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateX(2px); }
 .slide-thumb.active { border-color: #2a2a2a; box-shadow: 0 4px 12px rgba(0,0,0,0.3); background: linear-gradient(to bottom, #ffffff, #f0f0f0); }
+.slide-thumb.dragging { opacity: 0.6; cursor: grabbing; }
+.slide-thumb.drag-over { border-color: #1f2937; box-shadow: 0 0 0 3px rgba(31,41,55,0.2); }
 .slide-thumb-inner { width: 160px; height: 90px; background: #fff; border: 1px solid #d0d0d0; margin: 0 auto; position: relative; overflow: hidden; cursor: pointer; border-radius: 4px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
 .slide-num { text-align: center; font-size: 11px; color: #6b7280; margin-top: 6px; font-weight: 600; }
 .slide-actions { display: flex; gap: 4px; justify-content: center; margin-top: 6px; }
