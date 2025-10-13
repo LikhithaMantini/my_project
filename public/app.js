@@ -210,6 +210,123 @@ function makeSlide(template = 'blank', theme = 'default') {
   return slide;
 }
 
+function toNumber(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeTextStyles(styles, themeConfig) {
+  const defaultColor = themeConfig?.textColor || '#111111';
+  return {
+    fontSize: Number.isFinite(styles?.fontSize) ? styles.fontSize : 18,
+    color: typeof styles?.color === 'string' ? styles.color : defaultColor,
+    fontWeight: styles?.fontWeight === 'bold' ? 'bold' : 'normal',
+    fontStyle: styles?.fontStyle === 'italic' ? 'italic' : 'normal',
+    textDecoration: styles?.textDecoration === 'underline' ? 'underline' : 'none',
+    textAlign: ['left', 'center', 'right', 'justify'].includes(styles?.textAlign) ? styles.textAlign : 'left',
+    fontFamily: typeof styles?.fontFamily === 'string' && styles.fontFamily.trim() ? styles.fontFamily : 'Arial',
+    lineHeight: Number.isFinite(styles?.lineHeight) ? styles.lineHeight : 1.4,
+    listStyle: ['bullet', 'number', 'none'].includes(styles?.listStyle) ? styles.listStyle : 'none'
+  };
+}
+
+function normalizeElement(element, themeConfig) {
+  if (!element || typeof element !== 'object') return null;
+  const base = {
+    id: typeof element.id === 'string' ? element.id : uid('el'),
+    type: element.type,
+    x: toNumber(element.x, 100),
+    y: toNumber(element.y, 120),
+    w: toNumber(element.w, 400),
+    h: toNumber(element.h, 200),
+    rotation: toNumber(element.rotation, 0)
+  };
+
+  switch (element.type) {
+    case 'text': {
+      return {
+        ...base,
+        type: 'text',
+        styles: normalizeTextStyles(element.styles, themeConfig),
+        content: typeof element.content === 'string' ? element.content : ''
+      };
+    }
+    case 'image': {
+      return {
+        ...base,
+        type: 'image',
+        src: typeof element.src === 'string' ? element.src : ''
+      };
+    }
+    case 'chart': {
+      const labels = Array.isArray(element.data?.labels) ? element.data.labels : ['Item 1', 'Item 2'];
+      const datasets = Array.isArray(element.data?.datasets) && element.data.datasets.length > 0
+        ? element.data.datasets.map((ds, idx) => ({
+            label: typeof ds.label === 'string' ? ds.label : `Series ${idx + 1}`,
+            values: Array.isArray(ds.values) && ds.values.length === labels.length ? ds.values : new Array(labels.length).fill(0),
+            color: typeof ds.color === 'string' ? ds.color : '#4e79a7'
+          }))
+        : [{ label: 'Series 1', values: new Array(labels.length).fill(0), color: '#4e79a7' }];
+      return {
+        ...base,
+        type: 'chart',
+        chartType: ['bar', 'line', 'pie'].includes(element.chartType) ? element.chartType : 'bar',
+        data: { labels, datasets }
+      };
+    }
+    case 'shape': {
+      return {
+        ...base,
+        type: 'shape',
+        shapeType: ['rect', 'circle', 'line'].includes(element.shapeType) ? element.shapeType : 'rect',
+        fill: typeof element.fill === 'string' ? element.fill : '#4e79a7',
+        stroke: typeof element.stroke === 'string' ? element.stroke : '#000000',
+        strokeWidth: toNumber(element.strokeWidth, 2)
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+function normalizePresentation(raw, { fallbackId } = {}) {
+  if (!raw || typeof raw !== 'object') {
+    const fallback = defaultPresentation();
+    if (fallbackId) fallback.id = fallbackId;
+    return fallback;
+  }
+
+  const clone = JSON.parse(JSON.stringify(raw));
+  const normalized = { ...clone };
+
+  normalized.id = typeof normalized.id === 'string' ? normalized.id : (fallbackId || `ppt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`);
+  normalized.name = typeof normalized.name === 'string' && normalized.name.trim() ? normalized.name : 'Untitled Presentation';
+  normalized.theme = typeof normalized.theme === 'string' && THEMES[normalized.theme] ? normalized.theme : 'default';
+
+  const themeConfig = THEMES[normalized.theme] || THEMES.default;
+
+  if (!Array.isArray(normalized.slides) || normalized.slides.length === 0) {
+    normalized.slides = [makeSlide('title', normalized.theme)];
+  } else {
+    normalized.slides = normalized.slides.map((slide) => {
+      if (!slide || typeof slide !== 'object') return makeSlide('blank', normalized.theme);
+      const elements = Array.isArray(slide.elements)
+        ? slide.elements.map((el) => normalizeElement(el, themeConfig)).filter(Boolean)
+        : [];
+      return {
+        id: typeof slide.id === 'string' ? slide.id : uid('slide'),
+        background: typeof slide.background === 'string' ? slide.background : themeConfig.slideBackground,
+        elements
+      };
+    }).filter(Boolean);
+  }
+
+  if (normalized.slides.length === 0) {
+    normalized.slides = [makeSlide('blank', normalized.theme)];
+  }
+
+  return normalized;
+}
+
 // Compact Toolbar with icon-based tabs
 function Toolbar({
   onAddSlide,
@@ -1047,35 +1164,60 @@ function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const presentationId = params.get('presentation');
-    if (presentationId) {
+    if (!presentationId) return;
+
+    const localKey = `presentation_${presentationId}`;
+
+    const applyPresentation = (data) => {
+      if (!data || !Array.isArray(data.slides)) {
+        throw new Error('Invalid presentation data');
+      }
+      setPresentation(data);
+      setCurrentSlide(0);
+      setSelectedElementId(null);
+      setHistory([JSON.stringify(data)]);
+      setHistoryIndex(0);
+    };
+
+    try {
+      const storedData = localStorage.getItem(localKey);
+      if (storedData) {
+        const parsed = JSON.parse(storedData);
+        const normalized = normalizePresentation(parsed, { fallbackId: presentationId });
+        setPresentation(normalized);
+        setCurrentSlide(0);
+        setSelectedElementId(null);
+        setHistory([JSON.stringify(normalized)]);
+        setHistoryIndex(0);
+        return;
+      }
+    } catch (err) {
+      console.error('Failed to read local presentation cache:', err);
+    }
+
+    (async () => {
       try {
-        // Try localStorage first
-        const storedData = localStorage.getItem(`presentation_${presentationId}`);
-        if (storedData) {
-          const data = JSON.parse(storedData);
-          setPresentation(data);
-          setCurrentSlide(0);
-          setSelectedElementId(null);
-          setHistory([JSON.stringify(data)]);
-          setHistoryIndex(0);
-          return;
+        const response = await fetch(`/api/presentations/${encodeURIComponent(presentationId)}`);
+        if (!response.ok) {
+          throw new Error(response.status === 404 ? 'Presentation not found' : 'Failed to load presentation');
         }
-        
-        // Fallback to API
-        fetch('/api/presentations/'+encodeURIComponent(presentationId))
-          .then(r=>r.json())
-          .then(data=>{
-            setPresentation(data);
-            setCurrentSlide(0);
-            setSelectedElementId(null);
-            setHistory([JSON.stringify(data)]);
-            setHistoryIndex(0);
-          })
-          .catch(()=> console.error('Failed to load shared presentation'));
+        const data = await response.json();
+        const normalized = normalizePresentation(data, { fallbackId: presentationId });
+        setPresentation(normalized);
+        setCurrentSlide(0);
+        setSelectedElementId(null);
+        setHistory([JSON.stringify(normalized)]);
+        setHistoryIndex(0);
+        try {
+          localStorage.setItem(localKey, JSON.stringify(normalized));
+        } catch (err) {
+          console.warn('Unable to cache shared presentation locally:', err);
+        }
       } catch (err) {
         console.error('Failed to load shared presentation:', err);
+        alert('Unable to load the shared presentation. Please check the link and try again.');
       }
-    }
+    })();
   }, []);
 
   function saveHistory(newPresentation) {
@@ -1413,33 +1555,15 @@ function App() {
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
         
-        // Save to localStorage for sharing functionality
-        const presentationId = presentation.id || 'ppt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem(`presentation_${presentationId}`, dataStr);
-        setPresentation(prev => ({ ...prev, id: presentationId }));
-        
         alert(`PowerPoint library not available. Presentation "${presentationData.name}" saved as JSON file instead. Please refresh the page and try again for PowerPoint export.`);
         return;
       }
-      
-      // Create presentation data for localStorage (sharing functionality)
-      const presentationData = {
-        ...presentation,
-        name: presentation.name || 'Untitled Presentation',
-        createdAt: new Date().toISOString(),
-        version: '1.0'
-      };
-      
-      // Save to localStorage for sharing functionality
-      const presentationId = presentation.id || 'ppt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem(`presentation_${presentationId}`, JSON.stringify(presentationData));
-      setPresentation(prev => ({ ...prev, id: presentationId }));
       
       // Create actual PowerPoint file using PptxGenJS
       const pptx = new PptxGenJS();
       pptx.layout = 'LAYOUT_WIDE';
       pptx.author = 'PPT Maker';
-      pptx.title = presentationData.name;
+      pptx.title = presentation.name || 'Presentation';
       
       presentation.slides.forEach(sl => {
         const slide = pptx.addSlide();
@@ -1534,9 +1658,8 @@ function App() {
       });
       
       // Download the PowerPoint file
-      pptx.writeFile({ fileName: presentationData.name + '.pptx' });
-      alert(`Presentation "${presentationData.name}" saved and downloaded as PowerPoint file successfully!`);
-      
+      pptx.writeFile({ fileName: (presentation.name || 'Presentation') + '.pptx' });
+      alert(`Presentation "${presentation.name || 'Presentation'}" saved and downloaded as PowerPoint file successfully!`);
     } catch (err) {
       console.error('Save error:', err);
       alert('Save failed: ' + err.message);
@@ -1580,27 +1703,51 @@ function App() {
     }
   }
 
-  function onShare() {
+  async function onShare() {
     try {
-      // Always save current presentation data before sharing
       let presentationId = presentation.id;
       if (!presentationId) {
         presentationId = 'ppt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       }
-      
-      const presentationData = {
-        ...presentation,
-        id: presentationId,
-        name: presentation.name || 'Untitled Presentation',
-        createdAt: new Date().toISOString(),
-        version: '1.0'
-      };
-      
-      // Always save/update in localStorage
-      localStorage.setItem(`presentation_${presentationId}`, JSON.stringify(presentationData));
+
+      const presentationData = normalizePresentation(
+        {
+          ...presentation,
+          id: presentationId,
+          name: presentation.name || 'Untitled Presentation',
+          createdAt: presentation.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          version: '1.0'
+        },
+        { fallbackId: presentationId }
+      );
+
+      const sanitizedData = JSON.parse(JSON.stringify(presentationData));
+
+      const response = await fetch('/api/presentations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(sanitizedData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save presentation for sharing');
+      }
+
+      const result = await response.json();
+      if (result && result.id) {
+        presentationId = result.id;
+      }
+
+      const payloadToStore = { ...sanitizedData, id: presentationId };
+      try {
+        localStorage.setItem(`presentation_${presentationId}`, JSON.stringify(payloadToStore));
+      } catch (err) {
+        console.warn('Unable to cache shared presentation after saving:', err);
+      }
       setPresentation(prev => ({ ...prev, id: presentationId }));
-      
-      console.log('Presentation saved for sharing with ID:', presentationId);
       setShowShareDialog(true);
     } catch (err) {
       console.error('Share error:', err);
@@ -1737,7 +1884,7 @@ function App() {
         onSave={onSave}
         onLoad={() => setShowLoad(true)}
         onExport={onExport}
-        onShare={() => setShowShareDialog(true)}
+        onShare={onShare}
         onPresent={() => setPresentMode(true)}
         presentationName={presentation.name}
         setPresentationName={(name) => setPresentation(prev => ({ ...prev, name }))}
