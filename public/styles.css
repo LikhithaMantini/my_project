@@ -143,8 +143,8 @@ select:focus { outline: none; border-color: #4a4a4a; }
 .chart-editor .dataset-row button:hover { background: #d0d0d0; }
 
 /* Tooltips */
-button[title]:hover::after { content: attr(title); position: absolute; bottom: -32px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; z-index: 100; pointer-events: none; }
-button { position: relative; }
+.toolbar button[title]:hover::after { content: attr(title); position: absolute; bottom: -32px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; z-index: 100; pointer-events: none; }
+.toolbar button { position: relative; }
 
 /* Responsive Design */
 @media (max-width: 1200px) {
@@ -680,7 +680,9 @@ select:focus-visible {
 }
 
 /* Improved tooltips */
-button[title]:hover::after {
+/* Limit hover tooltips to toolbar buttons to avoid duplicate bubbles on slide actions */
+.toolbar button[title]:hover::after,
+.toolbar button[title]:focus::after {
   animation: fadeIn 0.2s ease-in-out;
   z-index: 1000;
 }

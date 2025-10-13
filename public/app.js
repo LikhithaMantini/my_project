@@ -811,7 +811,7 @@ function SlideThumb({
           <button onClick={onMoveUp} title="Move slide up" className="slide-action-btn">▲</button>
         )}
         {canMoveDown && (
-          <button onClick={onMoveDown} title="Move slide down" className="slide-action-btn">▼</button>
+          <button onClick={onMoveDown} className="slide-action-btn">▼</button>
         )}
       </div>
     </div>
