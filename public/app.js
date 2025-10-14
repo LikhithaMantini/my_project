@@ -381,10 +381,27 @@ function Toolbar({
   }, [selectedElement]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const evaluateVisibility = () => {
+      setToolbarVisible(window.innerWidth > 900);
+    };
+    evaluateVisibility();
+    window.addEventListener('resize', evaluateVisibility);
+    return () => window.removeEventListener('resize', evaluateVisibility);
+  }, []);
+
+  useEffect(() => {
     if (!availableTabs.some(tab => tab.id === activeTab)) {
       setActiveTab(availableTabs[0]?.id || 'file');
     }
   }, [activeTab, availableTabs]);
+
+  useEffect(() => {
+    if (selectedElement?.type === 'chart') {
+      setActiveTab('format');
+      setToolbarVisible(true);
+    }
+  }, [selectedElement?.id, selectedElement?.type]);
 
   const handleTabClick = (tabId) => {
     setActiveTab(tabId);
@@ -393,6 +410,10 @@ function Toolbar({
     } else {
       setToolbarVisible(false);
     }
+  };
+
+  const handleToolbarToggle = () => {
+    setToolbarVisible(prev => !prev);
   };
 
   const renderFileTab = () => (
@@ -448,19 +469,6 @@ function Toolbar({
             <button onClick={onRedo} disabled={!canRedo} title="Redo">Redo</button>
             <button onClick={onLoad} title="Open saved presentation">Open</button>
           </div>
-          <div className="theme-actions">
-            <label className="section-label">Themes</label>
-            {THEME_OPTIONS.map((theme) => (
-              <button
-                key={theme.id}
-                onClick={() => onApplyTheme(theme.id)}
-                className={currentTheme === theme.id ? 'active' : ''}
-                title={theme.description}
-              >
-                {theme.name}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     </div>
@@ -512,7 +520,7 @@ function Toolbar({
   );
 
   const renderDesignTab = () => (
-    <div className="toolbar-group">
+    <div className="toolbar-group design-toolbar-group">
       <div className="tool-section">
         <label className="section-label">Background</label>
         <input
@@ -524,6 +532,22 @@ function Toolbar({
         <button onClick={() => onChangeBackground('#ffffff')} title="Classic white background">Light</button>
         <button onClick={() => onChangeBackground('#000000')} title="Solid black background">Dark</button>
         <button onClick={() => onChangeBackground('#f2f2f2')} title="Soft gray background">Soft Gray</button>
+      </div>
+      <div className="tool-divider"></div>
+      <div className="tool-section theme-selector">
+        <label className="section-label">Themes</label>
+        <div className="theme-grid">
+          {THEME_OPTIONS.map((theme) => (
+            <button
+              key={theme.id}
+              onClick={() => onApplyTheme(theme.id)}
+              className={`theme-button${currentTheme === theme.id ? ' active' : ''}`}
+              title={theme.description}
+            >
+              {theme.name}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -709,19 +733,31 @@ function Toolbar({
             </div>
           ))}
         </div>
-        <input
-          className="name-input-compact"
-          value={presentationName}
-          onChange={(e) => setPresentationName(e.target.value)}
-          placeholder="Untitled presentation"
-        />
-        <button className="present-btn" onClick={onPresent} title="Present slideshow">
-          Present
-        </button>
+        <div className="toolbar-actions">
+          <input
+            className="name-input-compact"
+            value={presentationName}
+            onChange={(e) => setPresentationName(e.target.value)}
+            placeholder="Untitled presentation"
+          />
+          <button className="present-btn" onClick={onPresent} title="Present slideshow">
+            Present
+          </button>
+          <button
+            type="button"
+            className={`toolbar-panel-toggle${shouldShowToolbarContent ? ' open' : ''}`}
+            onClick={handleToolbarToggle}
+            aria-expanded={shouldShowToolbarContent}
+            aria-controls="toolbar-content"
+            title={shouldShowToolbarContent ? 'Hide toolbar options' : 'Show toolbar options'}
+          >
+            {shouldShowToolbarContent ? 'Hide Options' : 'Show Options'}
+          </button>
+        </div>
       </div>
 
       {shouldShowToolbarContent && (
-        <div className="toolbar-content">
+        <div className="toolbar-content" id="toolbar-content">
           {activeTab === 'file' && renderFileTab()}
           {activeTab === 'insert' && renderInsertTab()}
           {activeTab === 'design' && renderDesignTab()}
@@ -811,7 +847,7 @@ function SlideThumb({
           <button onClick={onMoveUp} title="Move slide up" className="slide-action-btn">▲</button>
         )}
         {canMoveDown && (
-          <button onClick={onMoveDown} className="slide-action-btn">▼</button>
+          <button onClick={onMoveDown} title="Move slide down" className="slide-action-btn">▼</button>
         )}
       </div>
     </div>
@@ -822,8 +858,14 @@ function ChartElement({ element }) {
   const ref = useRef();
   useEffect(()=>{
     if (!ref.current) return;
-    const ctx = ref.current.getContext('2d');
-    ref.current._chart && ref.current._chart.destroy();
+    const canvas = ref.current;
+    const ctx = canvas.getContext('2d');
+    if (canvas._chart) {
+      canvas._chart.destroy();
+      canvas._chart = null;
+    }
+    canvas.width = element.w;
+    canvas.height = element.h;
     const chartType = element.chartType || 'bar';
     const datasets = (element.data?.datasets || [{ label: 'Series', values: [3,5,2], color: '#4e79a7' }]).map(ds => ({
       label: ds.label || 'Series',
@@ -833,9 +875,15 @@ function ChartElement({ element }) {
       borderWidth: 1,
     }));
     const data = { labels: element.data?.labels || ['A','B','C'], datasets };
-    const options = { responsive: false, plugins: { legend: { display: datasets.length > 1 || chartType === 'pie' } }, scales: chartType !== 'pie' ? { y: { beginAtZero: true } } : {} };
+    const options = {
+      responsive: false,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: datasets.length > 1 || chartType === 'pie' } },
+      scales: chartType !== 'pie' ? { y: { beginAtZero: true } } : {}
+    };
     const chart = new Chart(ctx, { type: chartType, data, options });
-    ref.current._chart = chart;
+    chart.resize(element.w, element.h);
+    canvas._chart = chart;
     return ()=> chart.destroy();
   }, [element]);
   return <canvas width={element.w} height={element.h} ref={ref} />;
@@ -856,76 +904,177 @@ function ShapeElement({ element }) {
   return null;
 }
 
+const CANVAS_BASE_WIDTH = 960;
+const CANVAS_BASE_HEIGHT = 720;
+
 function Canvas({ slide, selectedElementId, onSelect, onChangeText, onDragStart, onDragEnd, onResizeStart, onResizeEnd }) {
+  const wrapperRef = useRef(null);
+  const [scale, setScale] = useState(1);
+
+  const handleTextKeyDown = (event, element) => {
+    if (event.key !== 'Enter') return;
+    const listStyle = element.styles?.listStyle;
+    if (listStyle !== 'bullet' && listStyle !== 'number') return;
+
+    event.preventDefault();
+
+    const target = event.target;
+    const value = target.value;
+    const selectionStart = target.selectionStart ?? value.length;
+    const selectionEnd = target.selectionEnd ?? value.length;
+    const before = value.slice(0, selectionStart);
+    const after = value.slice(selectionEnd);
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const currentLine = before.slice(lineStart);
+
+    let insert = '\n';
+    if (listStyle === 'bullet') {
+      insert += '• ';
+    } else if (listStyle === 'number') {
+      const match = currentLine.match(/^(\d+)[\.)]\s*/);
+      const nextNumber = match ? parseInt(match[1], 10) + 1 : 1;
+      insert += `${nextNumber}. `;
+    }
+
+    const updated = before + insert + after;
+    const newCursorPos = before.length + insert.length;
+    onChangeText(element.id, updated);
+    requestAnimationFrame(() => {
+      target.selectionStart = target.selectionEnd = newCursorPos;
+    });
+  };
+
+  useEffect(() => {
+    const updateScale = () => {
+      const wrapper = wrapperRef.current;
+      if (!wrapper) return;
+      const { clientWidth, clientHeight } = wrapper;
+      if (!clientWidth || !clientHeight) return;
+      const widthScale = clientWidth / CANVAS_BASE_WIDTH;
+      const heightScale = clientHeight / CANVAS_BASE_HEIGHT;
+      const nextScale = Math.max(Math.min(widthScale, heightScale), 0.1);
+      setScale(nextScale);
+    };
+
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    let resizeObserver;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(updateScale);
+      if (wrapperRef.current) {
+        resizeObserver.observe(wrapperRef.current);
+      }
+    }
+    return () => {
+      window.removeEventListener('resize', updateScale);
+      if (resizeObserver) resizeObserver.disconnect();
+    };
+  }, []);
+
+  const canvasStyle = {
+    background: slide.background,
+    width: CANVAS_BASE_WIDTH * scale,
+    height: CANVAS_BASE_HEIGHT * scale,
+  };
+
   return (
-    <div className="canvas" style={{ background: slide.background, aspectRatio: '4/3', width: '960px', height: '720px' }}>
-      {slide.elements.map(el => {
-        const style = { left: el.x, top: el.y, width: el.w, height: el.h, transform: `rotate(${el.rotation||0}deg)` };
-        const selected = el.id === selectedElementId;
-        const commonProps = { onClick: (e)=>{ e.stopPropagation(); onSelect(el.id); } };
-        if (el.type === 'text') {
-          return (
-            <div key={el.id} className={"el text-el" + (selected?' selected':'')} style={style} {...commonProps}>
-              <textarea value={el.content} onChange={e=>onChangeText(el.id, e.target.value)} style={{
-                fontSize: el.styles?.fontSize,
-                color: el.styles?.color,
-                fontWeight: el.styles?.fontWeight,
-                fontStyle: el.styles?.fontStyle,
-                textDecoration: el.styles?.textDecoration,
-                textAlign: el.styles?.textAlign,
-                fontFamily: el.styles?.fontFamily || 'Arial',
-                lineHeight: el.styles?.lineHeight || 1.2,
-              }} />
-              {selected && <ResizeHandles onResizeStart={(dir)=>onResizeStart(el.id, dir)} />}
-              {selected && <DragHandle onDragStart={()=>onDragStart(el.id)} />}
-            </div>
-          );
-        }
-        if (el.type === 'image') {
-          return (
-            <div key={el.id} className={"el image-el" + (selected?' selected':'')} style={style} {...commonProps}>
-              <img src={el.src} alt="" draggable={false} />
-              {selected && <ResizeHandles onResizeStart={(dir)=>onResizeStart(el.id, dir)} />}
-              {selected && <DragHandle onDragStart={()=>onDragStart(el.id)} />}
-            </div>
-          );
-        }
-        if (el.type === 'chart') {
-          return (
-            <div key={el.id} className={"el chart-el" + (selected?' selected':'')} style={style} {...commonProps}>
-              <ChartElement element={el} />
-              {selected && <ResizeHandles onResizeStart={(dir)=>onResizeStart(el.id, dir)} />}
-              {selected && <DragHandle onDragStart={()=>onDragStart(el.id)} />}
-            </div>
-          );
-        }
-        if (el.type === 'shape') {
-          return (
-            <div key={el.id} className={"el shape-el" + (selected?' selected':'')} style={style} {...commonProps}>
-              <ShapeElement element={el} />
-              {selected && <ResizeHandles onResizeStart={(dir)=>onResizeStart(el.id, dir)} />}
-              {selected && <DragHandle onDragStart={()=>onDragStart(el.id)} />}
-            </div>
-          );
-        }
-        return null;
-      })}
-      <div className="canvas-overlay" onClick={()=>onSelect(null)} />
+    <div className="canvas-wrapper" ref={wrapperRef}>
+      <div className="canvas" style={canvasStyle}>
+        {slide.elements.map(el => {
+          const style = {
+            left: el.x * scale,
+            top: el.y * scale,
+            width: el.w * scale,
+            height: el.h * scale,
+            transform: `rotate(${el.rotation || 0}deg)`
+          };
+          const selected = el.id === selectedElementId;
+          const commonProps = {
+            onClick: (e) => {
+              e.stopPropagation();
+              onSelect(el.id);
+            }
+          };
+          if (el.type === 'text') {
+            return (
+              <div key={el.id} className={"el text-el" + (selected ? ' selected' : '')} style={style} {...commonProps}>
+                <textarea
+                  value={el.content}
+                  onChange={e => onChangeText(el.id, e.target.value)}
+                  onKeyDown={(e) => handleTextKeyDown(e, el)}
+                  style={{
+                    fontSize: (el.styles?.fontSize || 18) * scale,
+                    color: el.styles?.color,
+                    fontWeight: el.styles?.fontWeight,
+                    fontStyle: el.styles?.fontStyle,
+                    textDecoration: el.styles?.textDecoration,
+                    textAlign: el.styles?.textAlign,
+                    fontFamily: el.styles?.fontFamily || 'Arial',
+                    lineHeight: el.styles?.lineHeight || 1.2,
+                  }}
+                />
+                {selected && <ResizeHandles onResizeStart={(dir, evt) => onResizeStart(el.id, dir, evt, scale)} scale={scale} />}
+                {selected && <DragHandle onDragStart={(evt) => onDragStart(el.id, evt, scale)} scale={scale} />}
+              </div>
+            );
+          }
+          if (el.type === 'image') {
+            return (
+              <div key={el.id} className={"el image-el" + (selected ? ' selected' : '')} style={style} {...commonProps}>
+                <img src={el.src} alt="" draggable={false} />
+                {selected && <ResizeHandles onResizeStart={(dir, evt) => onResizeStart(el.id, dir, evt, scale)} scale={scale} />}
+                {selected && <DragHandle onDragStart={(evt) => onDragStart(el.id, evt, scale)} scale={scale} />}
+              </div>
+            );
+          }
+          if (el.type === 'chart') {
+            return (
+              <div key={el.id} className={"el chart-el" + (selected ? ' selected' : '')} style={style} {...commonProps}>
+                <ChartElement element={el} />
+                {selected && <ResizeHandles onResizeStart={(dir, evt) => onResizeStart(el.id, dir, evt, scale)} scale={scale} />}
+                {selected && <DragHandle onDragStart={(evt) => onDragStart(el.id, evt, scale)} scale={scale} />}
+              </div>
+            );
+          }
+          if (el.type === 'shape') {
+            return (
+              <div key={el.id} className={"el shape-el" + (selected ? ' selected' : '')} style={style} {...commonProps}>
+                <ShapeElement element={el} />
+                {selected && <ResizeHandles onResizeStart={(dir, evt) => onResizeStart(el.id, dir, evt, scale)} scale={scale} />}
+                {selected && <DragHandle onDragStart={(evt) => onDragStart(el.id, evt, scale)} scale={scale} />}
+              </div>
+            );
+          }
+          return null;
+        })}
+        <div className="canvas-overlay" onClick={() => onSelect(null)} />
+      </div>
     </div>
   );
 }
 
 function DragHandle({ onDragStart }) {
-  return <div className="drag-handle" onMouseDown={onDragStart} title="Drag to move">Move</div>;
+  const handleDown = (evt) => onDragStart(evt);
+  return (
+    <div
+      className="drag-handle"
+      onPointerDown={handleDown}
+      onMouseDown={handleDown}
+      title="Drag to move"
+    >
+      Move
+    </div>
+  );
 }
 
 function ResizeHandles({ onResizeStart }) {
+  const bind = (dir) => (evt) => onResizeStart(dir, evt);
   return (
     <>
-      <div className="resize-handle nw" onMouseDown={()=>onResizeStart('nw')} />
-      <div className="resize-handle ne" onMouseDown={()=>onResizeStart('ne')} />
-      <div className="resize-handle sw" onMouseDown={()=>onResizeStart('sw')} />
-      <div className="resize-handle se" onMouseDown={()=>onResizeStart('se')} />
+      <div className="resize-handle nw" onPointerDown={bind('nw')} onMouseDown={bind('nw')} />
+      <div className="resize-handle ne" onPointerDown={bind('ne')} onMouseDown={bind('ne')} />
+      <div className="resize-handle sw" onPointerDown={bind('sw')} onMouseDown={bind('sw')} />
+      <div className="resize-handle se" onPointerDown={bind('se')} onMouseDown={bind('se')} />
     </>
   );
 }
@@ -1156,6 +1305,7 @@ function App() {
   const [resizing, setResizing] = useState(null);
   const [draggingSlideIndex, setDraggingSlideIndex] = useState(null);
   const [dragOverSlideIndex, setDragOverSlideIndex] = useState(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
   const selectedSlide = presentation.slides[currentSlide];
   const selectedElement = selectedSlide?.elements.find(e=>e.id===selectedElementId) || null;
@@ -1316,21 +1466,23 @@ function App() {
 
   useEffect(() => {
     if (!dragging && !resizing) return;
-    function handleMouseMove(e) {
+    function handlePointerMove(e) {
       if (dragging) {
         updatePresentation(p => {
           const el = p.slides[currentSlide].elements.find(e=>e.id===dragging.id);
           if (!el) return;
-          el.x = dragging.startX + (e.clientX - dragging.mouseX);
-          el.y = dragging.startY + (e.clientY - dragging.mouseY);
+          const scale = dragging.scale || 1;
+          el.x = dragging.startX + (e.clientX - dragging.mouseX) / scale;
+          el.y = dragging.startY + (e.clientY - dragging.mouseY) / scale;
         }, false);
       }
       if (resizing) {
         updatePresentation(p => {
           const el = p.slides[currentSlide].elements.find(e=>e.id===resizing.id);
           if (!el) return;
-          const dx = e.clientX - resizing.mouseX;
-          const dy = e.clientY - resizing.mouseY;
+          const scale = resizing.scale || 1;
+          const dx = (e.clientX - resizing.mouseX) / scale;
+          const dy = (e.clientY - resizing.mouseY) / scale;
           if (resizing.dir === 'se') {
             el.w = Math.max(20, resizing.startW + dx);
             el.h = Math.max(20, resizing.startH + dy);
@@ -1355,20 +1507,54 @@ function App() {
         }, false);
       }
     }
-    function handleMouseUp() {
+    const pointerActive = (dragging?.pointerId != null) || (resizing?.pointerId != null);
+    function finishInteraction() {
       if (dragging || resizing) {
         saveHistory(presentation);
+      }
+      const captureTarget = resizing?.captureTarget || dragging?.captureTarget;
+      const pointerId = resizing?.pointerId ?? dragging?.pointerId;
+      if (captureTarget?.releasePointerCapture && typeof pointerId === 'number') {
+        try { captureTarget.releasePointerCapture(pointerId); } catch (err) { /* ignore */ }
       }
       setDragging(null);
       setResizing(null);
     }
+    const handlePointerUp = () => finishInteraction();
+    const handlePointerCancel = () => finishInteraction();
+    const handleMouseMove = (e) => {
+      if (pointerActive) return;
+      handlePointerMove(e);
+    };
+    const handleMouseUp = () => {
+      if (pointerActive) return;
+      finishInteraction();
+    };
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerCancel);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerCancel);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, [dragging, resizing, presentation, currentSlide]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => {
+      if (window.innerWidth > 900) {
+        setIsSidebarCollapsed(false);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   function onAddSlide(template) {
     updatePresentation(p => {
@@ -1486,18 +1672,26 @@ function App() {
       const lines = (el.content || '').split('\n');
 
       if (nextStyle === 'bullet') {
-        el.content = lines.map(line => {
-          const trimmed = stripMarkers(line).trim();
-          if (!trimmed) return '';
-          return `• ${trimmed}`;
-        }).join('\n');
+        if (!el.content || !el.content.trim()) {
+          el.content = '• ';
+        } else {
+          el.content = lines.map(line => {
+            const trimmed = stripMarkers(line).trim();
+            if (!trimmed) return '';
+            return `• ${trimmed}`;
+          }).join('\n');
+        }
       } else if (nextStyle === 'number') {
-        let counter = 1;
-        el.content = lines.map(line => {
-          const trimmed = stripMarkers(line).trim();
-          if (!trimmed) return '';
-          return `${counter++}. ${trimmed}`;
-        }).join('\n');
+        if (!el.content || !el.content.trim()) {
+          el.content = '1. ';
+        } else {
+          let counter = 1;
+          el.content = lines.map(line => {
+            const trimmed = stripMarkers(line).trim();
+            if (!trimmed) return '';
+            return `${counter++}. ${trimmed}`;
+          }).join('\n');
+        }
       } else {
         el.content = lines.map(line => stripMarkers(line)).join('\n');
       }
@@ -1519,16 +1713,51 @@ function App() {
     });
   }
 
-  function onDragStart(elId) {
+  function onDragStart(elId, evt, scale = 1) {
     const el = selectedSlide.elements.find(e=>e.id===elId);
     if (!el) return;
-    setDragging({ id: elId, startX: el.x, startY: el.y, mouseX: event.clientX, mouseY: event.clientY });
+    if (evt) {
+      evt.stopPropagation();
+      evt.preventDefault();
+      if (evt.target?.setPointerCapture) {
+        try { evt.target.setPointerCapture(evt.pointerId); } catch (err) { /* ignore */ }
+      }
+    }
+    setDragging({
+      id: elId,
+      startX: el.x,
+      startY: el.y,
+      mouseX: evt?.clientX ?? 0,
+      mouseY: evt?.clientY ?? 0,
+      scale: scale || 1,
+      pointerId: evt?.pointerId,
+      captureTarget: evt?.target || null
+    });
   }
 
-  function onResizeStart(elId, dir) {
+  function onResizeStart(elId, dir, evt, scale = 1) {
     const el = selectedSlide.elements.find(e=>e.id===elId);
     if (!el) return;
-    setResizing({ id: elId, dir, startX: el.x, startY: el.y, startW: el.w, startH: el.h, mouseX: event.clientX, mouseY: event.clientY });
+    if (evt) {
+      evt.stopPropagation();
+      evt.preventDefault();
+      if (evt.target?.setPointerCapture) {
+        try { evt.target.setPointerCapture(evt.pointerId); } catch (err) { /* ignore */ }
+      }
+    }
+    setResizing({
+      id: elId,
+      dir,
+      startX: el.x,
+      startY: el.y,
+      startW: el.w,
+      startH: el.h,
+      mouseX: evt?.clientX ?? 0,
+      mouseY: evt?.clientY ?? 0,
+      scale: scale || 1,
+      pointerId: evt?.pointerId,
+      captureTarget: evt?.target || null
+    });
   }
 
   function onSave() {
@@ -1901,7 +2130,18 @@ function App() {
       />
 
       <div className="main">
-        <div className="sidebar">
+        <div className="sidebar-toggle">
+          <span className="sidebar-toggle-label">Slides ({presentation.slides.length})</span>
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed(prev => !prev)}
+            aria-expanded={!isSidebarCollapsed}
+            aria-controls="sidebar-panel"
+          >
+            {isSidebarCollapsed ? 'Show Slides' : 'Hide Slides'}
+          </button>
+        </div>
+        <div className={`sidebar${isSidebarCollapsed ? ' collapsed' : ''}`} id="sidebar-panel">
           <div className="sidebar-header">
             <div
               style={{
