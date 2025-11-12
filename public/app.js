@@ -1,12 +1,89 @@
-const { useState, useEffect, useRef, useMemo } = React;
+const { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } = React;
+
+function isValidHexColor(value) {
+  return typeof value === 'string' && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim());
+}
+
+function coerceColorValue(value, fallback) {
+  return isValidHexColor(value) ? value.trim() : fallback;
+}
+
+function ColorIconPicker({ title, ariaLabel, icon, value, fallback = '#ffffff', onChange, onReset }) {
+  const resolved = isValidHexColor(value) ? value.trim() : null;
+  const inputValue = coerceColorValue(value, fallback);
+
+  return (
+    <label
+      className={`icon-color-picker${resolved ? ' icon-color-picker--active' : ''}`}
+      title={title}
+      aria-label={ariaLabel || title}
+      onDoubleClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (onReset) onReset();
+      }}
+    >
+      <span className="icon-color-picker__icon" aria-hidden="true">
+        {icon}
+      </span>
+      <span
+        className="icon-color-picker__swatch"
+        style={{
+          background: resolved || 'transparent',
+          borderColor: resolved || 'rgba(148, 163, 184, 0.6)',
+        }}
+        aria-hidden="true"
+      />
+      <input
+        type="color"
+        className="icon-color-picker__input"
+        value={inputValue}
+        onChange={(event) => {
+          const next = event.target.value;
+          if (onChange) onChange(coerceColorValue(next, fallback));
+        }}
+      />
+    </label>
+  );
+}
 
 // Debug function to check library availability
+function resolvePptxGen() {
+  if (typeof window === 'undefined') return null;
+  const candidates = [
+    typeof PptxGenJS !== 'undefined' ? PptxGenJS : null,
+    window.PptxGenJS,
+    window.pptxgen,
+    window.pptxgenjs,
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'function') return candidate;
+    if (candidate && typeof candidate.default === 'function') return candidate.default;
+    if (candidate && typeof candidate.PptxGenJS === 'function') return candidate.PptxGenJS;
+  }
+  return null;
+}
+
+function ensureChartEnum(pptx, PptxConstructor) {
+  if (!pptx || typeof pptx !== 'object') return pptx;
+  if (!pptx.ChartType) {
+    const chartEnum = PptxConstructor?.ChartType || PptxConstructor?.default?.ChartType;
+    if (chartEnum) {
+      pptx.ChartType = chartEnum;
+    }
+  }
+  return pptx;
+}
+
 function checkLibraryStatus() {
+  const PptxConstructor = resolvePptxGen();
   console.log('Library Status Check:');
-  console.log('- PptxGenJS available:', typeof PptxGenJS !== 'undefined');
+  console.log('- PptxGenJS available:', Boolean(PptxConstructor));
   console.log('- Chart.js available:', typeof Chart !== 'undefined');
-  if (typeof PptxGenJS !== 'undefined') {
-    console.log('- PptxGenJS version:', PptxGenJS.version || 'unknown');
+  if (PptxConstructor) {
+    const version = PptxConstructor.version || PptxConstructor.default?.version || 'unknown';
+    console.log('- PptxGenJS version:', version);
   }
 }
 
@@ -29,55 +106,101 @@ const FONT_FAMILIES = [
 const TOOLBAR_TABS = [
   { id: 'file', label: 'File' },
   { id: 'insert', label: 'Insert' },
-  { id: 'design', label: 'Design' },
-  { id: 'format', label: 'Format', requiresSelection: true },
 ];
 
-const THEME_OPTIONS = [
-  {
-    id: 'default',
-    name: 'Classic Light',
-    description: 'Bright neutrals with charcoal text',
-    slideBackground: '#ffffff',
-    textColor: '#111111',
+const DEFAULT_THEME = {
+  slideBackground: '#ffffff',
+  textColor: '#111111',
+  heading: {
+    fontFamily: 'Arial',
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#111111',
+    lineHeight: 1.2,
   },
-  {
-    id: 'midnight',
-    name: 'Midnight Noir',
-    description: 'Deep charcoal with soft contrast text',
-    slideBackground: '#1f1f24',
-    textColor: '#f5f6f7',
+  body: {
+    fontFamily: 'Arial',
+    fontSize: 20,
+    fontWeight: 'normal',
+    color: '#1f2937',
+    lineHeight: 1.4,
   },
-  {
-    id: 'ocean',
-    name: 'Ocean Mist',
-    description: 'Cool blues with crisp white typography',
-    slideBackground: '#0f172a',
-    textColor: '#f8fafc',
+  placeholders: {
+    title: {
+      fontFamily: 'Arial',
+      color: 'rgba(17,24,39,0.45)',
+      fontWeight: '600',
+    },
+    body: {
+      fontFamily: 'Arial',
+      color: 'rgba(71,85,105,0.55)',
+      fontStyle: 'italic',
+    }
   },
-  {
-    id: 'sunrise',
-    name: 'Sunrise Glow',
-    description: 'Warm gradient-inspired palette',
-    slideBackground: '#fff7ed',
-    textColor: '#1f2937',
+  shapeStyles: {
+    fill: '#8B5CF6',
+    stroke: 'rgba(59,130,246,0.35)',
+    strokeWidth: 2,
+    shadow: '0 10px 30px rgba(139,92,246,0.25)'
   },
-];
+  chartPalette: ['#8B5CF6', '#38BDF8', '#F472B6', '#FBBF24', '#22C55E', '#A855F7'],
+};
 
-const THEMES = THEME_OPTIONS.reduce((acc, theme) => {
-  acc[theme.id] = theme;
-  return acc;
-}, {});
+const DEFAULT_TEXT_PLACEHOLDERS = {
+  title: 'Click to add title',
+  subtitle: 'Click to add subtitle',
+  body: 'Click to add text',
+  content: 'Click to add content',
+  bullet: '• Click to add content\n• Add your key points here\n• Use bullet points for clarity',
+};
+
+const DEFAULT_PLACEHOLDER_VALUES = new Set(Object.values(DEFAULT_TEXT_PLACEHOLDERS));
+const LEGACY_PLACEHOLDER_VALUES = new Set([
+  ...DEFAULT_PLACEHOLDER_VALUES,
+  'Click to edit text',
+]);
+
+function getPlaceholderKey(value) {
+  if (!value) return null;
+  for (const [key, placeholderValue] of Object.entries(DEFAULT_TEXT_PLACEHOLDERS)) {
+    if (placeholderValue === value) return key;
+  }
+  return null;
+}
 
 // Searchable Font Dropdown Component
-function FontDropdown({ value, onChange, title }) {
+function FontDropdown({ value, onChange, title, trigger = 'inline' }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const dropdownRef = useRef();
 
-  const filteredFonts = FONT_FAMILIES.filter(font =>
-    font.toLowerCase().includes(search.toLowerCase())
-  );
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredFonts = useMemo(() => {
+    if (!normalizedSearch) return FONT_FAMILIES;
+
+    const collapsedSearch = normalizedSearch.replace(/\s+/g, '');
+
+    const scoredFonts = FONT_FAMILIES.map((font) => {
+      const lower = font.toLowerCase();
+      const collapsed = lower.replace(/\s+/g, '');
+
+      let score = 0;
+      if (lower.startsWith(normalizedSearch)) {
+        score = 3;
+      } else if (lower.includes(normalizedSearch)) {
+        score = 2;
+      } else if (collapsed.includes(collapsedSearch)) {
+        score = 1;
+      } else {
+        score = 0;
+      }
+
+      return { font, score };
+    }).filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score || a.font.localeCompare(b.font));
+
+    return scoredFonts.map(({ font }) => font);
+  }, [normalizedSearch]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -96,49 +219,35 @@ function FontDropdown({ value, onChange, title }) {
     setSearch('');
   };
 
+  const isIconTrigger = trigger === 'icon';
+
   return (
-    <div className="font-dropdown" ref={dropdownRef} style={{ position: 'relative', width: '140px' }}>
+    <div
+      className={`font-dropdown${isIconTrigger ? ' font-dropdown--icon' : ''}`}
+      ref={dropdownRef}
+      style={{ position: 'relative', width: isIconTrigger ? 'auto' : '140px' }}
+    >
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         title={title}
-        style={{
-          width: '100%',
-          textAlign: 'left',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          fontSize: '12px',
-          padding: '6px 10px',
-          background: 'var(--color-panel)',
-          border: '1px solid var(--color-border)',
-          color: 'var(--color-text-primary)',
-        }}
+        className={`font-dropdown__trigger${isIconTrigger ? ' font-dropdown__trigger--icon' : ''}`}
+        aria-label={`${title}${value ? `: ${value}` : ''}`}
       >
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {value || 'Arial'}
-        </span>
-        <span>{isOpen ? '^' : 'v'}</span>
+        {isIconTrigger ? (
+          <span className="font-dropdown__preview" style={{ fontFamily: value || 'Arial' }} aria-hidden="true">
+            Aa
+          </span>
+        ) : (
+          <span className="font-dropdown__label" title={value || 'Arial'}>
+            {value || 'Arial'}
+          </span>
+        )}
+        <span className="font-dropdown__caret" aria-hidden="true">{isOpen ? '▴' : '▾'}</span>
       </button>
 
       {isOpen && (
-        <div
-          style={
-            {
-              position: 'absolute',
-              top: 'calc(100% + 4px)',
-              left: 0,
-              right: 0,
-              background: 'var(--color-panel)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '6px',
-              boxShadow: '0 18px 40px rgba(0,0,0,0.45)',
-              zIndex: 1000,
-              maxHeight: '220px',
-              overflow: 'hidden',
-            }
-          }
-        >
+        <div className="font-dropdown__menu" style={{ maxHeight: '240px' }}>
           <input
             type="text"
             placeholder="Search fonts..."
@@ -156,17 +265,17 @@ function FontDropdown({ value, onChange, title }) {
             }}
             autoFocus
           />
-          <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
+          <div className="font-dropdown__list" style={{ maxHeight: '176px', overflowY: 'auto' }}>
             {filteredFonts.map(font => (
               <div
                 key={font}
                 onClick={() => handleSelect(font)}
                 style={{
-                  padding: '8px 10px',
+                  padding: '6px 8px',
                   cursor: 'pointer',
                   fontSize: '12px',
                   fontFamily: font,
-                  borderBottom: '1px solid var(--color-border)',
+                  borderBottom: '1px solid rgba(203,213,225,0.45)',
                   backgroundColor: font === value ? 'var(--color-surface-alt)' : 'transparent',
                   color: 'var(--color-text-primary)',
                 }}
@@ -190,22 +299,165 @@ function FontDropdown({ value, onChange, title }) {
 
 function defaultPresentation() {
   return {
-    name: 'Untitled Presentation',
-    theme: 'default',
+    name: '',
     slides: [ makeSlide('title') ],
   };
 }
 
-function makeSlide(template = 'blank', theme = 'default') {
-  const themeConfig = THEMES[theme] || THEMES.default;
-  const slide = { id: uid('slide'), background: themeConfig.slideBackground, elements: [] };
-  const textColor = themeConfig.textColor;
+function resolvePlaceholderStyle(themeConfig, placeholder, variant = 'body') {
+  if (!themeConfig) return null;
+  const placeholders = themeConfig.placeholders || {};
+  const placeholderKey = placeholder ? getPlaceholderKey(placeholder) : null;
+  if (placeholderKey && placeholders[placeholderKey]) {
+    return placeholders[placeholderKey];
+  }
+  const fallbackKey = variant === 'heading' ? 'title' : 'body';
+  return placeholders[fallbackKey] || null;
+}
+
+function createThemedTextElement({
+  themeConfig = DEFAULT_THEME,
+  variant = 'body',
+  placeholder,
+  x = 100,
+  y = 120,
+  w = 400,
+  h = 120,
+  textAlign = 'left',
+  listStyle = 'none',
+}) {
+  const normalizedVariant = variant === 'heading' ? 'heading' : 'body';
+  const variantStyles = themeConfig?.[normalizedVariant] || {};
+  const resolvedPlaceholder = placeholder || (normalizedVariant === 'heading'
+    ? DEFAULT_TEXT_PLACEHOLDERS.title
+    : DEFAULT_TEXT_PLACEHOLDERS.body);
+  const placeholderStyle = resolvePlaceholderStyle(themeConfig, resolvedPlaceholder, normalizedVariant);
+
+  const fontFamily = typeof variantStyles.fontFamily === 'string' && variantStyles.fontFamily.trim()
+    ? variantStyles.fontFamily.trim()
+    : 'Arial';
+  const fontSize = Number.isFinite(variantStyles.fontSize)
+    ? variantStyles.fontSize
+    : (normalizedVariant === 'heading' ? 36 : 20);
+  const fontWeight = variantStyles.fontWeight || (normalizedVariant === 'heading' ? 'bold' : 'normal');
+  const fontStyle = variantStyles.fontStyle || 'normal';
+  const lineHeight = Number.isFinite(variantStyles.lineHeight)
+    ? variantStyles.lineHeight
+    : (normalizedVariant === 'heading' ? 1.2 : 1.4);
+  const color = variantStyles.color || themeConfig?.textColor || '#111111';
+  const letterSpacing = Number.isFinite(variantStyles.letterSpacing)
+    ? variantStyles.letterSpacing
+    : undefined;
+
+  const element = {
+    id: uid('el'),
+    type: 'text',
+    x,
+    y,
+    w,
+    h,
+    rotation: 0,
+    styles: {
+      fontSize,
+      color,
+      fontWeight,
+      fontStyle,
+      textDecoration: 'none',
+      textAlign,
+      fontFamily,
+      lineHeight,
+      listStyle,
+    },
+    placeholder: resolvedPlaceholder,
+    placeholderStyle: placeholderStyle || undefined,
+    textVariant: normalizedVariant,
+    content: '',
+  };
+
+  if (letterSpacing !== undefined) {
+    element.styles.letterSpacing = letterSpacing;
+  }
+
+  return element;
+}
+
+function resolveSlideBackgroundFill(slide) {
+  if (!slide) return '#ffffff';
+  if (typeof slide.background === 'string' && slide.background.trim()) return slide.background;
+  return '#ffffff';
+}
+
+function makeSlide(template = 'blank') {
+  const themeConfig = DEFAULT_THEME;
+  const slide = {
+    id: uid('slide'),
+    background: themeConfig.slideBackground,
+    elements: []
+  };
   if (template === 'title') {
-    slide.elements.push({ id: uid('el'), type: 'text', x: 80, y: 180, w: 800, h: 100, rotation: 0, styles: { fontSize: 44, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'center', fontFamily: 'Arial', lineHeight: 1.2, listStyle: 'none' }, content: 'Click to add title' });
-    slide.elements.push({ id: uid('el'), type: 'text', x: 80, y: 320, w: 800, h: 80, rotation: 0, styles: { fontSize: 24, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'center', fontFamily: 'Arial', lineHeight: 1.2, listStyle: 'none' }, content: 'Click to add subtitle' });
+    slide.elements.push(createThemedTextElement({
+      placeholder: DEFAULT_TEXT_PLACEHOLDERS.title,
+      x: 80,
+      y: 180,
+      w: 800,
+      h: 100,
+      textAlign: 'center',
+      themeConfig,
+      variant: 'heading'
+    }));
+    slide.elements.push(createThemedTextElement({
+      placeholder: DEFAULT_TEXT_PLACEHOLDERS.subtitle,
+      x: 80,
+      y: 320,
+      w: 800,
+      h: 80,
+      textAlign: 'center',
+      themeConfig,
+      variant: 'body'
+    }));
+  } else if (template === 'titleBody') {
+    slide.elements.push(createThemedTextElement({
+      placeholder: DEFAULT_TEXT_PLACEHOLDERS.title,
+      x: 80,
+      y: 120,
+      w: 800,
+      h: 110,
+      textAlign: 'center',
+      themeConfig,
+      variant: 'heading'
+    }));
+    slide.elements.push(createThemedTextElement({
+      placeholder: DEFAULT_TEXT_PLACEHOLDERS.body,
+      x: 120,
+      y: 260,
+      w: 720,
+      h: 280,
+      textAlign: 'center',
+      themeConfig,
+      variant: 'body'
+    }));
   } else if (template === 'titleContent') {
-    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 50, w: 840, h: 80, rotation: 0, styles: { fontSize: 32, color: textColor, fontWeight: 'bold', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial', lineHeight: 1.2, listStyle: 'none' }, content: 'Click to add title' });
-    slide.elements.push({ id: uid('el'), type: 'text', x: 60, y: 160, w: 840, h: 400, rotation: 0, styles: { fontSize: 18, color: textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial', lineHeight: 1.4, listStyle: 'bullet' }, content: '• Click to add content\n• Add your key points here\n• Use bullet points for clarity' });
+    slide.elements.push(createThemedTextElement({
+      placeholder: DEFAULT_TEXT_PLACEHOLDERS.title,
+      x: 60,
+      y: 50,
+      w: 840,
+      h: 80,
+      textAlign: 'left',
+      themeConfig,
+      variant: 'heading'
+    }));
+    slide.elements.push(createThemedTextElement({
+      placeholder: DEFAULT_TEXT_PLACEHOLDERS.bullet,
+      x: 60,
+      y: 160,
+      w: 840,
+      h: 400,
+      textAlign: 'left',
+      themeConfig,
+      variant: 'body',
+      listStyle: 'bullet'
+    }));
   }
   return slide;
 }
@@ -225,7 +477,10 @@ function normalizeTextStyles(styles, themeConfig) {
     textAlign: ['left', 'center', 'right', 'justify'].includes(styles?.textAlign) ? styles.textAlign : 'left',
     fontFamily: typeof styles?.fontFamily === 'string' && styles.fontFamily.trim() ? styles.fontFamily : 'Arial',
     lineHeight: Number.isFinite(styles?.lineHeight) ? styles.lineHeight : 1.4,
-    listStyle: ['bullet', 'number', 'none'].includes(styles?.listStyle) ? styles.listStyle : 'none'
+    listStyle: ['bullet', 'number', 'none'].includes(styles?.listStyle) ? styles.listStyle : 'none',
+    backgroundColor: typeof styles?.backgroundColor === 'string' ? styles.backgroundColor : undefined,
+    borderColor: typeof styles?.borderColor === 'string' ? styles.borderColor : undefined,
+    borderWidth: Number.isFinite(styles?.borderWidth) ? Math.max(0, styles.borderWidth) : undefined
   };
 }
 
@@ -243,11 +498,37 @@ function normalizeElement(element, themeConfig) {
 
   switch (element.type) {
     case 'text': {
+      const styles = normalizeTextStyles(element.styles, themeConfig);
+      const rawContent = typeof element.content === 'string' ? element.content : '';
+      const trimmedContent = rawContent.trim();
+      const rawPlaceholder = typeof element.placeholder === 'string' && element.placeholder.trim()
+        ? element.placeholder
+        : null;
+
+      let placeholder = rawPlaceholder;
+      let content = rawContent;
+
+      if (!placeholder) {
+        const legacyMatch = LEGACY_PLACEHOLDER_VALUES.has(rawContent)
+          ? rawContent
+          : (LEGACY_PLACEHOLDER_VALUES.has(trimmedContent) ? trimmedContent : null);
+        if (legacyMatch) {
+          const key = getPlaceholderKey(legacyMatch);
+          placeholder = key ? DEFAULT_TEXT_PLACEHOLDERS[key] : DEFAULT_TEXT_PLACEHOLDERS.body;
+          content = '';
+        }
+      }
+
+      if (placeholder && (rawContent === placeholder || trimmedContent === (placeholder || '').trim())) {
+        content = '';
+      }
+
       return {
         ...base,
         type: 'text',
-        styles: normalizeTextStyles(element.styles, themeConfig),
-        content: typeof element.content === 'string' ? element.content : ''
+        styles,
+        content,
+        placeholder: placeholder || undefined
       };
     }
     case 'image': {
@@ -299,16 +580,14 @@ function normalizePresentation(raw, { fallbackId } = {}) {
   const normalized = { ...clone };
 
   normalized.id = typeof normalized.id === 'string' ? normalized.id : (fallbackId || `ppt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`);
-  normalized.name = typeof normalized.name === 'string' && normalized.name.trim() ? normalized.name : 'Untitled Presentation';
-  normalized.theme = typeof normalized.theme === 'string' && THEMES[normalized.theme] ? normalized.theme : 'default';
-
-  const themeConfig = THEMES[normalized.theme] || THEMES.default;
+  normalized.name = typeof normalized.name === 'string' && normalized.name.trim() ? normalized.name : '';
+  const themeConfig = DEFAULT_THEME;
 
   if (!Array.isArray(normalized.slides) || normalized.slides.length === 0) {
-    normalized.slides = [makeSlide('title', normalized.theme)];
+    normalized.slides = [makeSlide('title')];
   } else {
     normalized.slides = normalized.slides.map((slide) => {
-      if (!slide || typeof slide !== 'object') return makeSlide('blank', normalized.theme);
+      if (!slide || typeof slide !== 'object') return makeSlide('blank');
       const elements = Array.isArray(slide.elements)
         ? slide.elements.map((el) => normalizeElement(el, themeConfig)).filter(Boolean)
         : [];
@@ -321,7 +600,7 @@ function normalizePresentation(raw, { fallbackId } = {}) {
   }
 
   if (normalized.slides.length === 0) {
-    normalized.slides = [makeSlide('blank', normalized.theme)];
+    normalized.slides = [makeSlide('blank')];
   }
 
   return normalized;
@@ -335,86 +614,63 @@ function Toolbar({
   onAddChart,
   onAddShape,
   onDeleteElement,
-  onChangeProp,
-  selectedElement,
   onSave,
   onLoad,
-  onExport,
-  onShare,
-  onPresent,
-  presentationName,
-  setPresentationName,
   onUndo,
   onRedo,
   canUndo,
   canRedo,
+  onPresent,
+  isPresenting,
+  presentationName,
+  onChangeName,
   onChangeBackground,
   currentSlide,
-  onEditChart,
-  onApplyTheme,
-  currentTheme,
-  onApplyListStyle,
 }) {
   const fileRef = useRef();
-  const [activeTab, setActiveTab] = useState('file');
-  const [toolbarVisible, setToolbarVisible] = useState(false);
-  const isText = selectedElement?.type === 'text';
-  const isShape = selectedElement?.type === 'shape';
-  const isChart = selectedElement?.type === 'chart';
-  const prevSelectedTypeRef = useRef(null);
-  const availableTabs = useMemo(
-    () => TOOLBAR_TABS.filter(tab => !tab.requiresSelection || selectedElement),
-    [selectedElement]
-  );
+  const backgroundButtonRef = useRef();
+  const [showShapesMenu, setShowShapesMenu] = useState(false);
+  const [showChartsMenu, setShowChartsMenu] = useState(false);
+  const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
+  const [showCustomColorPicker, setShowCustomColorPicker] = useState(false);
 
-  useEffect(() => {
-    const prevType = prevSelectedTypeRef.current;
-    const currentType = selectedElement?.type || null;
-
-    if (currentType === 'text' && prevType !== 'text') {
-      setActiveTab('format');
-    } else if (!currentType && prevType === 'text') {
-      setActiveTab('file');
+  const handleNameInputKeyDown = useCallback((e) => {
+    if ((e.key === 'Enter' || e.key === 'NumpadEnter') && !e.shiftKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      const blurAndSave = () => {
+        if (document.activeElement === e.currentTarget) {
+          e.currentTarget.blur();
+        }
+        if (onSave) onSave();
+      };
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(blurAndSave);
+      } else {
+        setTimeout(blurAndSave, 0);
+      }
     }
+  }, [onSave]);
 
-    prevSelectedTypeRef.current = currentType;
-  }, [selectedElement]);
-
+  // Close dropdowns when clicking outside
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const evaluateVisibility = () => {
-      setToolbarVisible(window.innerWidth > 900);
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.ribbon-btn') && !e.target.closest('.ribbon-dropdown-menu')) {
+        setShowShapesMenu(false);
+        setShowChartsMenu(false);
+        setShowBackgroundMenu(false);
+        setShowCustomColorPicker(false);
+      }
     };
-    evaluateVisibility();
-    window.addEventListener('resize', evaluateVisibility);
-    return () => window.removeEventListener('resize', evaluateVisibility);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (!availableTabs.some(tab => tab.id === activeTab)) {
-      setActiveTab(availableTabs[0]?.id || 'file');
-    }
-  }, [activeTab, availableTabs]);
-
-  useEffect(() => {
-    if (selectedElement?.type === 'chart') {
-      setActiveTab('format');
-      setToolbarVisible(true);
-    }
-  }, [selectedElement?.id, selectedElement?.type]);
-
-  const handleTabClick = (tabId) => {
-    setActiveTab(tabId);
-    if (tabId === 'file' || tabId === 'insert' || tabId === 'design' || tabId === 'format') {
-      setToolbarVisible(true);
-    } else {
-      setToolbarVisible(false);
-    }
-  };
-
-  const handleToolbarToggle = () => {
-    setToolbarVisible(prev => !prev);
-  };
+  const backgroundColorOptions = [
+    '#FFFFFF', '#F3E8FF', '#E0F2FE', '#FCE7F3',
+    '#A78BFA', '#8B5CF6', '#38BDF8', '#1E3A8A',
+    '#111827', '#F97316', '#10B981', '#F9A8D4'
+  ];
 
   const renderFileTab = () => (
     <div className="toolbar-group file-toolbar-group">
@@ -433,41 +689,16 @@ function Toolbar({
             <div className="file-menu-desc">Download as PowerPoint (.pptx)</div>
           </div>
         </div>
-        <div className="file-menu-item" onClick={onExport} title="Export to PowerPoint">
+        <div className="file-menu-item" onClick={onLoad} title="Open saved presentation" tabIndex={0} 
+             onKeyDown={(e) => e.key === 'Enter' && onLoad()}>
           <div className="file-menu-icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="4" width="18" height="12" rx="2" ry="2"/>
-              <line x1="7" y1="8" x2="17" y2="8"/>
-              <line x1="7" y1="12" x2="17" y2="12"/>
-              <line x1="7" y1="16" x2="13" y2="16"/>
+              <path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4M17 8l-5-5-5 5M12 3v12"/>
             </svg>
           </div>
           <div className="file-menu-content">
-            <div className="file-menu-title">Export as PPTX</div>
-            <div className="file-menu-desc">Download PowerPoint file</div>
-          </div>
-        </div>
-        <div className="file-menu-item" onClick={onShare} title="Generate shareable link">
-          <div className="file-menu-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="18" cy="5" r="3"/>
-              <circle cx="6" cy="12" r="3"/>
-              <circle cx="18" cy="19" r="3"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-          </div>
-          <div className="file-menu-content">
-            <div className="file-menu-title">Share</div>
-            <div className="file-menu-desc">Generate shareable link</div>
-          </div>
-        </div>
-        <div className="history-theme-inline">
-          <div className="history-actions">
-            <label className="section-label">History</label>
-            <button onClick={onUndo} disabled={!canUndo} title="Undo">Undo</button>
-            <button onClick={onRedo} disabled={!canRedo} title="Redo">Redo</button>
-            <button onClick={onLoad} title="Open saved presentation">Open</button>
+            <div className="file-menu-title">Open</div>
+            <div className="file-menu-desc">Load saved presentation</div>
           </div>
         </div>
       </div>
@@ -478,8 +709,6 @@ function Toolbar({
     <div className="toolbar-group">
       <div className="tool-section">
         <label className="section-label">Slides</label>
-        <button onClick={() => onAddSlide('title')} title="Add a title slide">Title</button>
-        <button onClick={() => onAddSlide('titleContent')} title="Add slide with body content">Title + Content</button>
         <button onClick={() => onAddSlide('blank')} title="Add blank slide">Blank</button>
       </div>
       <div className="tool-divider"></div>
@@ -519,251 +748,365 @@ function Toolbar({
     </div>
   );
 
-  const renderDesignTab = () => (
-    <div className="toolbar-group design-toolbar-group">
-      <div className="tool-section">
-        <label className="section-label">Background</label>
-        <input
-          type="color"
-          value={currentSlide?.background || '#ffffff'}
-          onChange={(e) => onChangeBackground(e.target.value)}
-          title="Slide background"
-        />
-        <button onClick={() => onChangeBackground('#ffffff')} title="Classic white background">Light</button>
-        <button onClick={() => onChangeBackground('#000000')} title="Solid black background">Dark</button>
-        <button onClick={() => onChangeBackground('#f2f2f2')} title="Soft gray background">Soft Gray</button>
-      </div>
-      <div className="tool-divider"></div>
-      <div className="tool-section theme-selector">
-        <label className="section-label">Themes</label>
-        <div className="theme-grid">
-          {THEME_OPTIONS.map((theme) => (
-            <button
-              key={theme.id}
-              onClick={() => onApplyTheme(theme.id)}
-              className={`theme-button${currentTheme === theme.id ? ' active' : ''}`}
-              title={theme.description}
-            >
-              {theme.name}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderFormatTab = () => {
-    if (!selectedElement) return null;
-    return (
-      <div className="toolbar-group">
-        {isText && (
-          <>
-            <div className="tool-section">
-              <label className="section-label">Text Style</label>
-              <button
-                onClick={() => onChangeProp('fontWeight', selectedElement.styles?.fontWeight === 'bold' ? 'normal' : 'bold')}
-                className={selectedElement.styles?.fontWeight === 'bold' ? 'active' : ''}
-                title="Bold"
-                style={{ fontWeight: 'bold' }}
-              >
-                B
-              </button>
-              <button
-                onClick={() => onChangeProp('fontStyle', selectedElement.styles?.fontStyle === 'italic' ? 'normal' : 'italic')}
-                className={selectedElement.styles?.fontStyle === 'italic' ? 'active' : ''}
-                title="Italic"
-                style={{ fontStyle: 'italic' }}
-              >
-                I
-              </button>
-              <button
-                onClick={() =>
-                  onChangeProp(
-                    'textDecoration',
-                    selectedElement.styles?.textDecoration === 'underline' ? 'none' : 'underline'
-                  )
-                }
-                className={selectedElement.styles?.textDecoration === 'underline' ? 'active' : ''}
-                title="Underline"
-                style={{ textDecoration: 'underline' }}
-              >
-                U
-              </button>
-            </div>
-            <div className="tool-divider"></div>
-            <div className="tool-section">
-              <label className="section-label">Align</label>
-              <button
-                onClick={() => onChangeProp('textAlign', 'left')}
-                className={selectedElement.styles?.textAlign === 'left' ? 'active' : ''}
-                title="Align left"
-              >
-                Left
-              </button>
-              <button
-                onClick={() => onChangeProp('textAlign', 'center')}
-                className={selectedElement.styles?.textAlign === 'center' ? 'active' : ''}
-                title="Align center"
-              >
-                Center
-              </button>
-              <button
-                onClick={() => onChangeProp('textAlign', 'right')}
-                className={selectedElement.styles?.textAlign === 'right' ? 'active' : ''}
-                title="Align right"
-              >
-                Right
-              </button>
-            </div>
-            <div className="tool-divider"></div>
-            <div className="tool-section">
-              <label className="section-label">Font</label>
-              <input
-                type="number"
-                min="8"
-                max="96"
-                value={selectedElement.styles?.fontSize || 18}
-                onChange={(e) => onChangeProp('fontSize', parseInt(e.target.value || '18', 10))}
-                title="Font size"
-                style={{ width: '60px' }}
-              />
-              <input
-                type="color"
-                value={selectedElement.styles?.color || '#111111'}
-                onChange={(e) => onChangeProp('color', e.target.value)}
-                title="Font color"
-              />
-              <FontDropdown
-                value={selectedElement.styles?.fontFamily || 'Arial'}
-                onChange={(font) => onChangeProp('fontFamily', font)}
-                title="Font family"
-              />
-              <label className="section-label" style={{ marginLeft: '8px' }}>Spacing</label>
-              <input
-                type="number"
-                min="1"
-                max="3"
-                step="0.1"
-                value={selectedElement.styles?.lineHeight ?? 1.2}
-                onChange={(e) => onChangeProp('lineHeight', parseFloat(e.target.value) || 1.2)}
-                title="Line spacing"
-                style={{ width: '60px' }}
-              />
-            </div>
-            <div className="tool-divider"></div>
-            <div className="tool-section">
-              <label className="section-label">Lists</label>
-              <button
-                onClick={() => onApplyListStyle('bullet')}
-                className={selectedElement.styles?.listStyle === 'bullet' ? 'active' : ''}
-                title="Toggle bullet list"
-              >
-                Bullets
-              </button>
-              <button
-                onClick={() => onApplyListStyle('number')}
-                className={selectedElement.styles?.listStyle === 'number' ? 'active' : ''}
-                title="Toggle numbered list"
-              >
-                Numbers
-              </button>
-            </div>
-          </>
-        )}
-        {isShape && (
-          <>
-            {(isText) && <div className="tool-divider"></div>}
-            <div className="tool-section">
-              <label className="section-label">Shape Style</label>
-              <input
-                type="color"
-                value={selectedElement.fill || '#4e79a7'}
-                onChange={(e) => onChangeProp('fill', e.target.value)}
-                title="Fill color"
-              />
-              <input
-                type="color"
-                value={selectedElement.stroke || '#000000'}
-                onChange={(e) => onChangeProp('stroke', e.target.value)}
-                title="Stroke color"
-              />
-              <input
-                type="number"
-                min="0"
-                max="20"
-                value={selectedElement.strokeWidth || 2}
-                onChange={(e) => onChangeProp('strokeWidth', parseInt(e.target.value || '2', 10))}
-                title="Stroke width"
-                style={{ width: '60px' }}
-              />
-            </div>
-          </>
-        )}
-        {isChart && (
-          <>
-            {(isText || isShape) && <div className="tool-divider"></div>}
-            <div className="tool-section">
-              <button onClick={onEditChart} title="Edit chart data">Edit Chart Data</button>
-            </div>
-          </>
-        )}
-        {(isText || isShape || isChart) && <div className="tool-divider"></div>}
-        <div className="tool-section">
-          <button onClick={onDeleteElement} title="Remove selected element" className="delete-btn">
-            Delete Element
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const shouldShowToolbarContent = toolbarVisible || activeTab === 'format';
+  const resolvedBackground = (() => {
+    const slideBg = currentSlide?.background;
+    if (typeof slideBg === 'string') {
+      if (/^#([0-9a-fA-F]{3,8})$/.test(slideBg)) {
+        return slideBg.length === 4
+          ? `#${slideBg[1]}${slideBg[1]}${slideBg[2]}${slideBg[2]}${slideBg[3]}${slideBg[3]}`
+          : slideBg.slice(0, 7);
+      }
+      if (/^rgb/i.test(slideBg)) {
+        const match = slideBg.match(/rgb\s*\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+        if (match) {
+          const [r, g, b] = match.slice(1, 4).map((n) => {
+            const num = Math.max(0, Math.min(255, parseInt(n, 10) || 0));
+            return num.toString(16).padStart(2, '0');
+          });
+          return `#${r}${g}${b}`;
+        }
+      }
+    }
+    return DEFAULT_THEME.slideBackground;
+  })();
 
   return (
     <div className="toolbar-compact">
-      <div className="toolbar-header">
-        <div className="toolbar-tabs">
-          {availableTabs.map((tab) => (
-            <div
-              key={tab.id}
-              className={`toolbar-tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => handleTabClick(tab.id)}
-            >
-              {tab.label}
+      <div className="toolbar-content ribbon-layout" id="toolbar-content">
+          {/* File Operations */}
+          <div className="ribbon-section">
+            <label className="ribbon-section-label">File</label>
+            <div className="ribbon-section-content">
+              <button onClick={onSave} title="Save (Ctrl+S)" className="ribbon-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                  <polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/>
+                </svg>
+                <span>Save</span>
+              </button>
+              <button onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="ribbon-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+                </svg>
+                <span>Undo</span>
+              </button>
+              <button onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)" className="ribbon-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/>
+                </svg>
+                <span>Redo</span>
+              </button>
             </div>
-          ))}
-        </div>
-        <div className="toolbar-actions">
-          <input
-            className="name-input-compact"
-            value={presentationName}
-            onChange={(e) => setPresentationName(e.target.value)}
-            placeholder="Untitled presentation"
-          />
-          <button className="present-btn" onClick={onPresent} title="Present slideshow">
-            Present
-          </button>
-          <button
-            type="button"
-            className={`toolbar-panel-toggle${shouldShowToolbarContent ? ' open' : ''}`}
-            onClick={handleToolbarToggle}
-            aria-expanded={shouldShowToolbarContent}
-            aria-controls="toolbar-content"
-            title={shouldShowToolbarContent ? 'Hide toolbar options' : 'Show toolbar options'}
-          >
-            {shouldShowToolbarContent ? 'Hide Options' : 'Show Options'}
-          </button>
-        </div>
-      </div>
+          </div>
 
-      {shouldShowToolbarContent && (
-        <div className="toolbar-content" id="toolbar-content">
-          {activeTab === 'file' && renderFileTab()}
-          {activeTab === 'insert' && renderInsertTab()}
-          {activeTab === 'design' && renderDesignTab()}
-          {activeTab === 'format' && renderFormatTab()}
+          <div className="ribbon-divider"></div>
+
+          {/* Slides */}
+          <div className="ribbon-section">
+            <label className="ribbon-section-label">Slides</label>
+            <div className="ribbon-section-content">
+              <button onClick={() => onAddSlide('blank')} title="Add blank slide" className="ribbon-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                </svg>
+                <span>Blank</span>
+              </button>
+              <div style={{ position: 'relative' }}>
+                <button
+                  ref={backgroundButtonRef}
+                  type="button"
+                  className="ribbon-btn"
+                  title="Background color"
+                  onClick={() => {
+                    setShowBackgroundMenu(prev => !prev);
+                    setShowShapesMenu(false);
+                    setShowChartsMenu(false);
+                    setShowCustomColorPicker(false);
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="14" rx="2" ry="2"/>
+                    <path d="M3 10h18"/>
+                    <path d="M10 15l2 2 4-4"/>
+                  </svg>
+                  <span>Background</span>
+                </button>
+                {showBackgroundMenu && (
+                  <div
+                    className="ribbon-dropdown-menu"
+                    style={{
+                      top: `${(backgroundButtonRef.current?.getBoundingClientRect().bottom || 0) + window.scrollY}px`,
+                      left: `${(backgroundButtonRef.current?.getBoundingClientRect().left || 0) + (backgroundButtonRef.current?.getBoundingClientRect().width || 0) / 2 + window.scrollX}px`,
+                      transform: 'translateX(-50%)',
+                      padding: '10px 12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(4, 28px)',
+                        gap: '8px'
+                      }}
+                    >
+                      {backgroundColorOptions.map((color) => (
+                        <button
+                          key={color}
+                          onClick={() => {
+                            onChangeBackground?.(color);
+                            setShowBackgroundMenu(false);
+                            setShowCustomColorPicker(false);
+                          }}
+                          className="ribbon-color-swatch"
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '6px',
+                            border: color.toLowerCase() === (resolvedBackground || '').toLowerCase() ? '2px solid rgba(139,92,246,0.8)' : '1px solid rgba(148, 163, 184, 0.4)',
+                            background: color,
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                          title={color}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowCustomColorPicker(prev => !prev);
+                      }}
+                      className="ribbon-dropdown-item"
+                      type="button"
+                    >
+                      More colors…
+                    </button>
+                    {showCustomColorPicker && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '4px 6px',
+                          borderRadius: '8px',
+                          background: 'rgba(255,255,255,0.6)',
+                          boxShadow: 'inset 0 0 0 1px rgba(148,163,184,0.35)'
+                        }}
+                      >
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>Custom:</span>
+                        <input
+                          type="color"
+                          value={resolvedBackground}
+                          onChange={(e) => onChangeBackground?.(e.target.value)}
+                          title="Background color"
+                          aria-label="Slide background color"
+                          style={{
+                            width: '36px',
+                            height: '24px',
+                            border: 'none',
+                            background: 'transparent',
+                            padding: 0,
+                            cursor: 'pointer'
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="ribbon-divider"></div>
+
+          {/* Insert Elements */}
+          <div className="ribbon-section">
+            <label className="ribbon-section-label">Insert</label>
+            <div className="ribbon-section-content">
+              <button onClick={onAddText} title="Text box" className="ribbon-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/>
+                  <line x1="12" y1="4" x2="12" y2="20"/>
+                </svg>
+                <span>Text</span>
+              </button>
+              <button onClick={() => fileRef.current && fileRef.current.click()} title="Image" className="ribbon-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <span>Image</span>
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files && e.target.files[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => onAddImage(reader.result);
+                  reader.readAsDataURL(file);
+                  e.target.value = '';
+                }}
+              />
+              {/* Shapes Dropdown */}
+              <div style={{ position: 'relative' }}>
+                <button 
+                  onClick={(e) => { 
+                    setShowShapesMenu(!showShapesMenu); 
+                    setShowChartsMenu(false);
+                    setShowBackgroundMenu(false);
+                  }} 
+                  title="Shapes" 
+                  className="ribbon-btn"
+                  id="shapes-dropdown-btn"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="6" width="18" height="12" rx="2" ry="2"/>
+                  </svg>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span>Shapes</span>
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
+                      <path d="M6 9L2 5h8z"/>
+                    </svg>
+                  </div>
+                </button>
+                {showShapesMenu && (
+                  <div 
+                    className="ribbon-dropdown-menu"
+                    style={{
+                      top: document.getElementById('shapes-dropdown-btn')?.getBoundingClientRect().bottom + 'px',
+                      left: (document.getElementById('shapes-dropdown-btn')?.getBoundingClientRect().left + 
+                             document.getElementById('shapes-dropdown-btn')?.getBoundingClientRect().width / 2) + 'px',
+                      transform: 'translateX(-50%)'
+                    }}
+                  >
+                    <button 
+                      onClick={() => { onAddShape('rect'); setShowShapesMenu(false); }}
+                      className="ribbon-dropdown-item"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="6" width="18" height="12" rx="2" ry="2"/>
+                      </svg>
+                      <span>Rectangle</span>
+                    </button>
+                    <button 
+                      onClick={() => { onAddShape('circle'); setShowShapesMenu(false); }}
+                      className="ribbon-dropdown-item"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="9"/>
+                      </svg>
+                      <span>Circle</span>
+                    </button>
+                    <button 
+                      onClick={() => { onAddShape('line'); setShowShapesMenu(false); }}
+                      className="ribbon-dropdown-item"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                      </svg>
+                      <span>Line</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Charts Dropdown */}
+              <div style={{ position: 'relative' }}>
+                <button 
+                  onClick={() => { setShowChartsMenu(!showChartsMenu); setShowShapesMenu(false); setShowBackgroundMenu(false); setShowCustomColorPicker(false); }} 
+                  title="Charts" 
+                  className="ribbon-btn"
+                  id="charts-dropdown-btn"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/>
+                    <line x1="6" y1="20" x2="6" y2="16"/>
+                  </svg>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span>Charts</span>
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
+                      <path d="M6 9L2 5h8z"/>
+                    </svg>
+                  </div>
+                </button>
+                {showChartsMenu && (
+                  <div 
+                    className="ribbon-dropdown-menu"
+                    style={{
+                      top: document.getElementById('charts-dropdown-btn')?.getBoundingClientRect().bottom + 'px',
+                      left: (document.getElementById('charts-dropdown-btn')?.getBoundingClientRect().left + 
+                             document.getElementById('charts-dropdown-btn')?.getBoundingClientRect().width / 2) + 'px',
+                      transform: 'translateX(-50%)'
+                    }}
+                  >
+                    <button 
+                      onClick={() => { onAddChart('bar'); setShowChartsMenu(false); }}
+                      className="ribbon-dropdown-item"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="16"/>
+                      </svg>
+                      <span>Bar Chart</span>
+                    </button>
+                    <button 
+                      onClick={() => { onAddChart('line'); setShowChartsMenu(false); }}
+                      className="ribbon-dropdown-item"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3 17 9 11 13 15 21 7"/>
+                        <polyline points="14 7 21 7 21 14"/>
+                      </svg>
+                      <span>Line Chart</span>
+                    </button>
+                    <button 
+                      onClick={() => { onAddChart('pie'); setShowChartsMenu(false); }}
+                      className="ribbon-dropdown-item"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                        <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                      </svg>
+                      <span>Pie Chart</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="ribbon-divider"></div>
+
+          {/* Presentation Name & Present */}
+          <div className="ribbon-section ribbon-section-presentation">
+            <label className="ribbon-section-label">Presentation</label>
+            <div className="ribbon-section-content ribbon-presentation-content">
+              <input
+                className="name-input-ribbon"
+                value={presentationName}
+                onChange={(e) => onChangeName(e.target.value)}
+                placeholder="Untitled"
+                onKeyDown={handleNameInputKeyDown}
+              />
+              <button
+                className="present-btn-ribbon"
+                onClick={onPresent}
+                title={isPresenting ? 'Exit fullscreen (Esc)' : 'Present fullscreen (F5)'}
+                aria-label={isPresenting ? 'Exit fullscreen' : 'Present fullscreen'}
+                aria-pressed={isPresenting || false}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
-      )}
     </div>
   );
 }
@@ -771,13 +1114,10 @@ function Toolbar({
 function SlideThumb({
   slide,
   index,
-  total,
   active,
   onClick,
   onDuplicate,
   onDelete,
-  onMoveUp,
-  onMoveDown,
   onDragStart,
   onDragOver,
   onDrop,
@@ -787,8 +1127,45 @@ function SlideThumb({
   isDragOver,
 }) {
   const thumbRef = useRef();
-  const canMoveUp = index > 0;
-  const canMoveDown = index < (total - 1);
+  const innerRef = useRef(null);
+  const [thumbScale, setThumbScale] = useState(0.18);
+
+  const updateThumbScale = useCallback((width) => {
+    if (!width) return;
+    const nextScale = width / CANVAS_BASE_WIDTH;
+    setThumbScale(prevScale => (Math.abs(prevScale - nextScale) > 0.0005 ? nextScale : prevScale));
+  }, []);
+
+  useEffect(() => {
+    const node = innerRef.current;
+    if (!node) return undefined;
+
+    const measure = () => {
+      updateThumbScale(node.clientWidth);
+    };
+
+    measure();
+
+    let resizeObserver;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver((entries) => {
+        entries.forEach((entry) => {
+          updateThumbScale(entry.contentRect.width);
+        });
+      });
+      resizeObserver.observe(node);
+    } else {
+      window.addEventListener('resize', measure);
+    }
+
+    return () => {
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      } else {
+        window.removeEventListener('resize', measure);
+      }
+    };
+  }, [updateThumbScale]);
 
   useEffect(() => {
     if (active && thumbRef.current) {
@@ -823,6 +1200,135 @@ function SlideThumb({
     if (onDragEnd) onDragEnd();
   };
 
+  // Calculate scale for thumbnail (based on available width)
+  const thumbHeight = CANVAS_BASE_HEIGHT * thumbScale;
+
+  const renderThumbElement = (el) => {
+    const style = {
+      position: 'absolute',
+      left: el.x * thumbScale,
+      top: el.y * thumbScale,
+      width: el.w * thumbScale,
+      height: el.h * thumbScale,
+      transform: `rotate(${el.rotation || 0}deg)`,
+      pointerEvents: 'none',
+      borderRadius: '3px',
+    };
+
+    if (el.type === 'text') {
+      const backgroundColor = el.styles?.backgroundColor ? `${el.styles.backgroundColor}` : 'transparent';
+      const borderColor = el.styles?.borderColor;
+      const borderWidthValue = Number.isFinite(el.styles?.borderWidth) ? Math.max(0, el.styles.borderWidth) : (borderColor ? 1.5 : 0);
+      return (
+        <div key={el.id} style={style} className="thumb-text-el">
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              fontSize: Math.max((el.styles?.fontSize || 18) * thumbScale, 6),
+              color: el.styles?.color || '#111111',
+              fontWeight: el.styles?.fontWeight || 'normal',
+              fontStyle: el.styles?.fontStyle || 'normal',
+              textDecoration: el.styles?.textDecoration || 'none',
+              textAlign: el.styles?.textAlign || 'left',
+              fontFamily: el.styles?.fontFamily || 'Arial',
+              lineHeight: Math.max(el.styles?.lineHeight || 1.2, 1.1),
+              whiteSpace: 'pre-wrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              wordBreak: 'break-word',
+              hyphens: 'auto',
+              background: backgroundColor,
+              border: borderColor && borderWidthValue > 0 ? `${Math.max(1, borderWidthValue * thumbScale)}px solid ${borderColor}` : `${Math.max(1, borderWidthValue * thumbScale || 1)}px solid transparent`,
+              borderRadius: '6px',
+              padding: `${4 * thumbScale}px ${6 * thumbScale}px`,
+            }}
+          >
+            {el.content || ''}
+          </div>
+        </div>
+      );
+    }
+
+    if (el.type === 'image') {
+      return (
+        <div key={el.id} style={style} className="thumb-image-el">
+          <img
+            src={el.src}
+            alt=""
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              borderRadius: '4px',
+              border: '1px solid rgba(15, 23, 42, 0.12)',
+              boxShadow: '0 2px 6px rgba(15, 23, 42, 0.18)',
+            }}
+          />
+        </div>
+      );
+    }
+
+    if (el.type === 'chart') {
+      return (
+        <div
+          key={el.id}
+          style={{ ...style, overflow: 'hidden' }}
+          className="thumb-chart-el"
+        >
+          <div
+            style={{
+              width: el.w,
+              height: el.h,
+              transform: `scale(${thumbScale})`,
+              transformOrigin: 'top left',
+            }}
+          >
+            <ChartElement element={el} scale={1} />
+          </div>
+        </div>
+      );
+    }
+
+    if (el.type === 'shape') {
+      return (
+        <div key={el.id} style={style} className="thumb-shape-el">
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              background: el.fill || '#3b82f6',
+              border: `1px solid ${el.stroke || 'rgba(15,23,42,0.35)'}`,
+              borderRadius: el.shapeType === 'circle' ? '50%' : '6px',
+              boxShadow: '0 2px 6px rgba(15, 23, 42, 0.16)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Add subtle inner highlight for professional look */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '50%',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%)',
+                borderRadius: el.shapeType === 'circle' ? '50%' : '6px',
+                pointerEvents: 'none',
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div
       ref={thumbRef}
@@ -834,114 +1340,1225 @@ function SlideThumb({
       onDragLeave={handleDragLeave}
       onDragEnd={handleDragEnd}
     >
-      <div className="slide-thumb-inner" style={{ background: slide.background, aspectRatio: '4/3' }} onClick={onClick}>
-        {slide.elements.slice(0, 2).map(el => (
-          <div key={el.id} className="thumb-el" />
-        ))}
+      <div
+        ref={innerRef}
+        className="slide-thumb-inner"
+        style={{
+          background: slide.background,
+          width: '100%',
+          height: thumbHeight,
+          position: 'relative',
+          overflow: 'hidden',
+          maxWidth: '100%',
+        }}
+        onClick={onClick}
+      >
+        {slide.elements.map(renderThumbElement)}
       </div>
-      <div className="slide-num">{index + 1}</div>
-      <div className="slide-actions">
-        <button onClick={onDuplicate} title="Duplicate slide" className="slide-action-btn">⎘</button>
-        <button onClick={onDelete} title="Delete slide" className="slide-action-btn delete">✕</button>
-        {canMoveUp && (
-          <button onClick={onMoveUp} title="Move slide up" className="slide-action-btn">▲</button>
-        )}
-        {canMoveDown && (
-          <button onClick={onMoveDown} title="Move slide down" className="slide-action-btn">▼</button>
-        )}
+      <div className="slide-thumb-footer">
+        <div className="slide-num">{index + 1}</div>
+        <div className="slide-actions">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onDuplicate) onDuplicate();
+            }}
+            title="Duplicate slide"
+            className="slide-action-btn"
+            aria-label="Duplicate slide"
+          >
+            ⧉
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onDelete) onDelete();
+            }}
+            title="Delete slide"
+            className="slide-action-btn delete"
+            aria-label="Delete slide"
+          >
+            ✕
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function ChartElement({ element }) {
+function ChartElement({ element, scale = 1 }) {
   const ref = useRef();
+  const chartRef = useRef(null);
+
   useEffect(()=>{
     if (!ref.current) return;
     const canvas = ref.current;
     const ctx = canvas.getContext('2d');
-    if (canvas._chart) {
-      canvas._chart.destroy();
-      canvas._chart = null;
+
+    // Destroy existing chart if it exists
+    if (chartRef.current) {
+      chartRef.current.destroy();
+      chartRef.current = null;
     }
-    canvas.width = element.w;
-    canvas.height = element.h;
+
+    canvas.width = element.w * scale;
+    canvas.height = element.h * scale;
+
     const chartType = element.chartType || 'bar';
-    const datasets = (element.data?.datasets || [{ label: 'Series', values: [3,5,2], color: '#4e79a7' }]).map(ds => ({
-      label: ds.label || 'Series',
-      data: ds.values || [],
-      backgroundColor: chartType === 'pie' ? ['#4e79a7','#f28e2c','#e15759','#76b7b2','#59a14f'] : ds.color || '#4e79a7',
-      borderColor: ds.color || '#4e79a7',
-      borderWidth: 1,
-    }));
-    const data = { labels: element.data?.labels || ['A','B','C'], datasets };
+    const labels = element.data?.labels || ['A','B','C'];
+    const datasets = (element.data?.datasets || [{ label: 'Series', values: [3,5,2], color: '#4e79a7' }]).map(ds => {
+      const baseColor = ds.color || '#4e79a7';
+      const result = {
+        label: ds.label || 'Series',
+        data: ds.values || [],
+        borderColor: baseColor,
+        borderWidth: 1,
+      };
+      if (chartType === 'pie') {
+        const palette = Array.isArray(ds.segmentColors) && ds.segmentColors.length
+          ? ds.segmentColors
+          : Array.isArray(ds.colors) && ds.colors.length
+            ? ds.colors
+            : baseColor
+              ? [baseColor]
+              : DEFAULT_CHART_COLORS;
+        result.backgroundColor = labels.map((_, idx) => palette[idx % palette.length]);
+      } else {
+        result.backgroundColor = baseColor;
+      }
+      return result;
+    });
+
+    const data = { labels, datasets };
+
     const options = {
       responsive: false,
       maintainAspectRatio: false,
-      plugins: { legend: { display: datasets.length > 1 || chartType === 'pie' } },
-      scales: chartType !== 'pie' ? { y: { beginAtZero: true } } : {}
+      animation: false, // Disable animations to prevent fluctuation
+      hover: {
+        animationDuration: 0 // Disable hover animations
+      },
+      plugins: {
+        legend: {
+          display: datasets.length > 1 || chartType === 'pie',
+          position: 'top'
+        }
+      },
+      scales: chartType !== 'pie' ? {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0
+          }
+        },
+        x: {
+          ticks: {
+            maxRotation: 0
+          }
+        }
+      } : {}
     };
-    const chart = new Chart(ctx, { type: chartType, data, options });
-    chart.resize(element.w, element.h);
-    canvas._chart = chart;
-    return ()=> chart.destroy();
-  }, [element]);
-  return <canvas width={element.w} height={element.h} ref={ref} />;
+
+    try {
+      const chart = new Chart(ctx, { type: chartType, data, options });
+      chartRef.current = chart;
+    } catch (error) {
+      console.error('Error creating chart:', error);
+    }
+
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy();
+        chartRef.current = null;
+      }
+    };
+  }, [element.id, element.chartType, element.data, scale]); // More specific dependencies to prevent unnecessary re-renders
+
+  return <canvas ref={ref} style={{ width: '100%', height: '100%' }} />;
 }
 
-function ShapeElement({ element }) {
+function ShapeElement({ element, scale = 1 }) {
   const { shapeType, fill, stroke, strokeWidth, w, h } = element;
+  const sw = strokeWidth || 2;
+  const scaledStrokeWidth = sw * scale;
+  const halfStroke = sw / 2;
+  
+  const svgStyle = {
+    width: '100%', 
+    height: '100%', 
+    overflow: 'visible'
+  };
+  
   if (shapeType === 'rect') {
-    return <svg width={w} height={h}><rect x={0} y={0} width={w} height={h} fill={fill||'#4e79a7'} stroke={stroke||'#000'} strokeWidth={strokeWidth||2} /></svg>;
+    return (
+      <svg 
+        width={w * scale} 
+        height={h * scale} 
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        style={svgStyle}
+      >
+        <rect 
+          x={halfStroke} 
+          y={halfStroke} 
+          width={w - sw} 
+          height={h - sw} 
+          fill={fill||'#4e79a7'} 
+          stroke={stroke||'#000'} 
+          strokeWidth={sw}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    );
+  }
+  if (shapeType === 'square') {
+    const size = Math.min(w, h);
+    const offsetX = (w - size) / 2;
+    const offsetY = (h - size) / 2;
+    return (
+      <svg 
+        width={w * scale} 
+        height={h * scale} 
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        style={svgStyle}
+      >
+        <rect 
+          x={offsetX + halfStroke} 
+          y={offsetY + halfStroke} 
+          width={size - sw} 
+          height={size - sw} 
+          fill={fill||'#4e79a7'} 
+          stroke={stroke||'#000'} 
+          strokeWidth={sw}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    );
   }
   if (shapeType === 'circle') {
-    const r = Math.min(w,h)/2;
-    return <svg width={w} height={h}><circle cx={w/2} cy={h/2} r={r-((strokeWidth||2)/2)} fill={fill||'#4e79a7'} stroke={stroke||'#000'} strokeWidth={strokeWidth||2} /></svg>;
+    const r = Math.min(w, h) / 2 - halfStroke;
+    return (
+      <svg 
+        width={w * scale} 
+        height={h * scale} 
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        style={svgStyle}
+      >
+        <circle 
+          cx={w / 2} 
+          cy={h / 2} 
+          r={r} 
+          fill={fill||'#4e79a7'} 
+          stroke={stroke||'#000'} 
+          strokeWidth={sw}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    );
+  }
+  if (shapeType === 'triangle') {
+    const padding = halfStroke;
+    const points = `${w/2},${padding} ${w-padding},${h-padding} ${padding},${h-padding}`;
+    return (
+      <svg 
+        width={w * scale} 
+        height={h * scale} 
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+        style={svgStyle}
+      >
+        <polygon 
+          points={points} 
+          fill={fill||'#4e79a7'} 
+          stroke={stroke||'#000'} 
+          strokeWidth={sw}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    );
   }
   if (shapeType === 'line') {
-    return <svg width={w} height={h}><line x1={0} y1={h/2} x2={w} y2={h/2} stroke={stroke||'#000'} strokeWidth={strokeWidth||2} /></svg>;
+    const y = h / 2;
+    return (
+      <svg 
+        width={w * scale} 
+        height={h * scale} 
+        viewBox={`0 0 ${w} ${h}`}
+        style={svgStyle}
+      >
+        <line 
+          x1={halfStroke} 
+          y1={y} 
+          x2={w - halfStroke} 
+          y2={y} 
+          stroke={stroke||'#000'} 
+          strokeWidth={sw}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    );
   }
   return null;
 }
 
+// Floating Text Toolbar Component
+function FloatingTextToolbar({ element, draggingElementId, onStyleChange, onApplyListStyle, onDelete }) {
+  const toolbarRef = useRef(null);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const styleDropdownRef = useRef(null);
+  const alignDropdownRef = useRef(null);
+  const spacingDropdownRef = useRef(null);
+  const [styleMenuOpen, setStyleMenuOpen] = useState(false);
+  const [alignMenuOpen, setAlignMenuOpen] = useState(false);
+  const [spacingMenuOpen, setSpacingMenuOpen] = useState(false);
+
+  const elementId = element?.id;
+
+  const calculateToolbarPosition = useCallback(() => {
+    if (!elementId) return;
+    const node = document.getElementById(`element-${elementId}`);
+    const canvas = document.querySelector('.canvas');
+    if (!node || !toolbarRef.current || !canvas) return;
+
+    const rect = node.getBoundingClientRect();
+    const toolbarRect = toolbarRef.current.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+
+    const gap = 12;
+    const top = Math.max(canvasRect.top + 8, rect.top - toolbarRect.height - gap);
+
+    let left = rect.left + rect.width / 2 - toolbarRect.width / 2;
+    left = Math.max(canvasRect.left + 8, Math.min(left, canvasRect.right - toolbarRect.width - 8));
+
+    setPosition(prev => {
+      if (Math.abs(prev.top - top) < 0.5 && Math.abs(prev.left - left) < 0.5) return prev;
+      return { top, left };
+    });
+  }, [elementId]);
+
+  useEffect(() => {
+    if (!elementId) return;
+
+    const updatePosition = () => {
+      requestAnimationFrame(calculateToolbarPosition);
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [elementId, calculateToolbarPosition]);
+
+  useLayoutEffect(() => {
+    if (!elementId) return;
+    if (draggingElementId && draggingElementId !== elementId) return;
+    calculateToolbarPosition();
+  }, [calculateToolbarPosition, element?.x, element?.y, element?.w, element?.h, draggingElementId]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (styleDropdownRef.current && !styleDropdownRef.current.contains(event.target)) {
+        setStyleMenuOpen(false);
+      }
+      if (alignDropdownRef.current && !alignDropdownRef.current.contains(event.target)) {
+        setAlignMenuOpen(false);
+      }
+      if (spacingDropdownRef.current && !spacingDropdownRef.current.contains(event.target)) {
+        setSpacingMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    setStyleMenuOpen(false);
+    setAlignMenuOpen(false);
+    setSpacingMenuOpen(false);
+  }, [element?.id]);
+
+  if (!element) return null;
+  const styles = element.styles || {};
+  const hasStyleEmphasis = styles.fontWeight === 'bold' || styles.fontStyle === 'italic' || styles.textDecoration === 'underline';
+  const currentAlign = styles.textAlign || 'left';
+  const gradientStart = rgbaFromHex('E8D9FF', 0.96) || 'rgba(232, 217, 255, 0.96)';
+  const gradientMiddle = rgbaFromHex('DFCCFF', 0.94) || 'rgba(223, 204, 255, 0.94)';
+  const gradientEnd = rgbaFromHex('CDE7FF', 0.96) || 'rgba(205, 231, 255, 0.96)';
+  const toolbarBackground = `linear-gradient(135deg, ${gradientStart}, ${gradientMiddle}, ${gradientEnd})`;
+  const toolbarBorder = 'rgba(205, 231, 255, 0.55)';
+  const glowColor = 'rgba(173, 196, 235, 0.28)';
+  const toolbarTextColor = '#1f273d';
+
+  const toggleStyleProp = (prop, activeValue, inactiveValue = 'normal') => {
+    const next = styles[prop] === activeValue ? inactiveValue : activeValue;
+    onStyleChange(prop, next);
+  };
+
+  const renderStyleIcon = () => {
+    const symbols = [];
+    if (styles.fontWeight === 'bold') symbols.push('𝐁');
+    if (styles.fontStyle === 'italic') symbols.push('𝑰');
+    if (styles.textDecoration === 'underline') symbols.push('𝑼');
+    if (!symbols.length) {
+      return '𝑨𝒂';
+    }
+    return symbols.join('');
+  };
+
+  const renderSpacingIcon = () => (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M5 3h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M4 8h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M5 13h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M2.8 5.4L2.8 10.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M13.2 5.4L13.2 10.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M3.6 6l-0.8 0.8L3.6 7.6" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12.4 10l0.8-0.8-0.8-0.8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+
+  const renderAlignIcon = (type) => {
+    switch (type) {
+      case 'center':
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <rect x="3" y="3" width="10" height="1.6" rx="0.8" fill="currentColor" />
+            <rect x="2" y="7" width="12" height="1.6" rx="0.8" fill="currentColor" />
+            <rect x="3" y="11" width="10" height="1.6" rx="0.8" fill="currentColor" />
+          </svg>
+        );
+      case 'right':
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <rect x="5" y="3" width="9" height="1.6" rx="0.8" fill="currentColor" />
+            <rect x="3" y="7" width="11" height="1.6" rx="0.8" fill="currentColor" />
+            <rect x="7" y="11" width="7" height="1.6" rx="0.8" fill="currentColor" />
+          </svg>
+        );
+      case 'left':
+      default:
+        return (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <rect x="2" y="3" width="9" height="1.6" rx="0.8" fill="currentColor" />
+            <rect x="2" y="7" width="11" height="1.6" rx="0.8" fill="currentColor" />
+            <rect x="2" y="11" width="7" height="1.6" rx="0.8" fill="currentColor" />
+          </svg>
+        );
+    }
+  };
+
+  const spacingOptions = [1, 1.2, 1.5, 1.75, 2];
+
+  return (
+    <div
+      ref={toolbarRef}
+      className="floating-toolbar floating-toolbar--text"
+      style={{
+        top: position.top,
+        left: position.left,
+        background: toolbarBackground,
+        borderColor: toolbarBorder,
+        color: toolbarTextColor,
+        boxShadow: `0 16px 32px ${glowColor}`
+      }}
+    >
+      <FontDropdown
+        value={styles.fontFamily || 'Arial'}
+        onChange={(font) => onStyleChange('fontFamily', font)}
+        title={`Font family (${styles.fontFamily || 'Arial'})`}
+        trigger="icon"
+      />
+
+      <input
+        type="number"
+        min={8}
+        max={120}
+        value={styles.fontSize || 18}
+        onChange={(e) => onStyleChange('fontSize', parseInt(e.target.value || '18', 10))}
+        title="Font size"
+      />
+
+      <div className="floating-toolbar__dropdown" ref={styleDropdownRef}>
+        <button
+          className={`dropdown-trigger${hasStyleEmphasis ? ' active' : ''}${styleMenuOpen ? ' open' : ''}`}
+          onClick={() => {
+            setStyleMenuOpen(prev => !prev);
+            setAlignMenuOpen(false);
+          }}
+          type="button"
+          title="Text style"
+          aria-label="Text style options"
+        >
+          <span className="dropdown-icon" aria-hidden="true">{renderStyleIcon()}</span>
+          <span className="dropdown-caret">▾</span>
+        </button>
+        {styleMenuOpen && (
+          <div className="floating-toolbar__menu">
+            <button
+              className={`dropdown-item${styles.fontWeight === 'bold' ? ' active' : ''}`}
+              onClick={() => toggleStyleProp('fontWeight', 'bold', 'normal')}
+              type="button"
+              aria-label="Toggle bold"
+            >
+              <span className="dropdown-icon" aria-hidden="true">𝐁</span>
+            </button>
+            <button
+              className={`dropdown-item${styles.fontStyle === 'italic' ? ' active' : ''}`}
+              onClick={() => toggleStyleProp('fontStyle', 'italic', 'normal')}
+              type="button"
+              aria-label="Toggle italic"
+            >
+              <span className="dropdown-icon" aria-hidden="true">𝑰</span>
+            </button>
+            <button
+              className={`dropdown-item${styles.textDecoration === 'underline' ? ' active' : ''}`}
+              onClick={() => toggleStyleProp('textDecoration', 'underline', 'none')}
+              type="button"
+              aria-label="Toggle underline"
+            >
+              <span className="dropdown-icon" aria-hidden="true">𝑼</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="toolbar-divider" />
+
+      <div className="floating-toolbar__dropdown" ref={alignDropdownRef}>
+        <button
+          className={`dropdown-trigger${alignMenuOpen ? ' open' : ''}`}
+          onClick={() => {
+            setAlignMenuOpen(prev => !prev);
+            setStyleMenuOpen(false);
+          }}
+          type="button"
+          title="Text alignment"
+          aria-label={`Text alignment (${currentAlign})`}
+        >
+          <span className="align-icon" aria-hidden="true">{renderAlignIcon(currentAlign)}</span>
+          <span className="dropdown-caret">▾</span>
+        </button>
+        {alignMenuOpen && (
+          <div className="floating-toolbar__menu">
+            {['left', 'center', 'right'].map(option => (
+              <button
+                key={option}
+                className={`dropdown-item${currentAlign === option ? ' active' : ''}`}
+                onClick={() => {
+                  onStyleChange('textAlign', option);
+                  setAlignMenuOpen(false);
+                }}
+                type="button"
+                aria-label={`Align ${option}`}
+              >
+                <span className="align-icon" aria-hidden="true">{renderAlignIcon(option)}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="floating-toolbar__dropdown" ref={spacingDropdownRef}>
+        <button
+          className={`dropdown-trigger${spacingMenuOpen ? ' open' : ''}`}
+          onClick={() => {
+            setSpacingMenuOpen(prev => !prev);
+            setStyleMenuOpen(false);
+            setAlignMenuOpen(false);
+          }}
+          type="button"
+          title="Line spacing"
+          aria-label={`Line spacing (${(styles.lineHeight || 1.2)}x)`}
+        >
+          <span className="dropdown-icon spacing-icon" aria-hidden="true">{renderSpacingIcon()}</span>
+          <span className="dropdown-value" aria-hidden="true">{`${(styles.lineHeight || 1.2)}x`}</span>
+          <span className="dropdown-caret">▾</span>
+        </button>
+        {spacingMenuOpen && (
+          <div className="floating-toolbar__menu floating-toolbar__menu--wide">
+            {spacingOptions.map(option => (
+              <button
+                key={option}
+                className={`dropdown-item dropdown-item--wide${(styles.lineHeight || 1.2) === option ? ' active' : ''}`}
+                onClick={() => {
+                  onStyleChange('lineHeight', option);
+                  setSpacingMenuOpen(false);
+                }}
+                type="button"
+                aria-label={`Set line spacing to ${option}x`}
+              >
+                <span aria-hidden="true">{option}x</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button
+        className={styles.listStyle === 'bullet' ? 'active' : ''}
+        onClick={() => onApplyListStyle('bullet')}
+        title="Bullet list"
+      >
+        •
+      </button>
+      <button
+        className={styles.listStyle === 'number' ? 'active' : ''}
+        onClick={() => onApplyListStyle('number')}
+        title="Numbered list"
+      >
+        1.
+      </button>
+
+      <div className="toolbar-divider" />
+
+      <ColorIconPicker
+        title="Font color"
+        ariaLabel="Font color"
+        icon={(
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path
+              d="M4.4 11.2L6.3 5.2C6.6 4.3 7.3 3.8 8 3.8C8.7 3.8 9.4 4.3 9.7 5.2L11.6 11.2"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M5.4 8.9H10.6"
+              stroke="currentColor"
+              strokeWidth="1.1"
+              strokeLinecap="round"
+            />
+            <rect
+              x="3.4"
+              y="12.2"
+              width="9.2"
+              height="1.2"
+              rx="0.6"
+              fill="currentColor"
+            />
+          </svg>
+        )}
+        value={styles.color}
+        fallback="#111111"
+        onChange={(color) => onStyleChange('color', color)}
+        onReset={() => onStyleChange('color', null)}
+      />
+
+      <ColorIconPicker
+        title="Text fill color"
+        ariaLabel="Text fill color"
+        icon={(
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2">
+            <rect x="1.8" y="2" width="12.4" height="9.6" rx="1.6" fill="currentColor" stroke="currentColor" opacity="0.2" />
+            <path d="M2 12.2h12" stroke="currentColor" strokeLinecap="round" />
+          </svg>
+        )}
+        value={styles.backgroundColor}
+        fallback="#ffffff"
+        onChange={(color) => onStyleChange('backgroundColor', color)}
+        onReset={() => onStyleChange('backgroundColor', null)}
+      />
+
+      <ColorIconPicker
+        title="Text outline color"
+        ariaLabel="Text outline color"
+        icon={(
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.1">
+            <path d="M8 2.4L12.8 6.8C13.9 7.9 13.9 9.7 12.8 10.8L8 15.2 3.2 10.8C2.1 9.7 2.1 7.9 3.2 6.8L8 2.4Z" fill="currentColor" opacity="0.2" />
+            <path d="M8 3.6L11.6 7C12.3 7.7 12.3 8.8 11.6 9.5L8 12.9 4.4 9.5C3.7 8.8 3.7 7.7 4.4 7L8 3.6Z" />
+          </svg>
+        )}
+        value={styles.borderColor}
+        fallback="#000000"
+        onChange={(color) => onStyleChange('borderColor', color)}
+        onReset={() => onStyleChange('borderColor', null)}
+      />
+
+      <div className="toolbar-number-control" title="Border width">
+        <span className="toolbar-number-control__icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="2.2" y="3.2" width="11.6" height="9.6" rx="2.4" stroke="currentColor" strokeWidth="1.4" />
+            <rect x="4.4" y="5.4" width="7.2" height="5.2" rx="1.6" fill="currentColor" opacity="0.15" />
+            <path d="M12.6 4.6L12.6 11" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+            <path d="M3.4 4.6L3.4 11" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+          </svg>
+        </span>
+        <input
+          type="number"
+          className="toolbar-number-control__input"
+          min={0}
+          max={12}
+          step={0.5}
+          value={Number.isFinite(styles.borderWidth) ? styles.borderWidth : 0}
+          onChange={(e) => {
+            const nextValue = parseFloat(e.target.value);
+            onStyleChange('borderWidth', Number.isFinite(nextValue) ? nextValue : 0);
+          }}
+          aria-label="Border width"
+        />
+      </div>
+
+      <div className="toolbar-divider" />
+
+      <button className="delete-btn" onClick={onDelete} title="Delete text" aria-label="Delete text">
+        <span aria-hidden="true">🗑</span>
+      </button>
+    </div>
+  );
+}
+
+// Floating Shape/Chart Toolbar Component
+function FloatingShapeToolbar({ element, onChangeProp, onEditChart, onDelete }) {
+  const toolbarRef = useRef(null);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (!element) return;
+
+    const updatePosition = () => {
+      const canvas = document.querySelector('.canvas');
+      if (!toolbarRef.current || !canvas) return;
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const toolbarRect = toolbarRef.current.getBoundingClientRect();
+      const scale = canvasRect.width / CANVAS_BASE_WIDTH;
+
+      const elementX = (element.x || 0) * scale + canvasRect.left;
+      const elementY = (element.y || 0) * scale + canvasRect.top;
+      const elementWidth = (element.w || 0) * scale;
+      const elementHeight = (element.h || 0) * scale;
+
+      const gap = 12;
+      const canvasTopPadding = canvasRect.top + 8;
+      const canvasBottomLimit = canvasRect.bottom - toolbarRect.height - 8;
+
+      const topCandidate = elementY - toolbarRect.height - gap;
+      const bottomCandidate = elementY + elementHeight + gap;
+      const top = topCandidate >= canvasTopPadding
+        ? Math.min(topCandidate, canvasBottomLimit)
+        : Math.min(Math.max(bottomCandidate, canvasTopPadding), canvasBottomLimit);
+
+      const elementCenterX = elementX + elementWidth / 2;
+      let left = elementCenterX - toolbarRect.width / 2;
+      left = Math.max(canvasRect.left + 8, Math.min(left, canvasRect.right - toolbarRect.width - 8));
+
+      setPosition({ top, left });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [element?.id, element?.x, element?.y, element?.w, element?.h]);
+
+  if (!element) return null;
+  const isChart = element.type === 'chart';
+  const isImage = element.type === 'image';
+
+  return (
+    <div
+      ref={toolbarRef}
+      className="floating-toolbar floating-toolbar--shape"
+      style={{ top: position.top, left: position.left }}
+    >
+      {!isImage && !isChart && (
+        <ColorIconPicker
+          title="Shape fill color"
+          ariaLabel="Shape fill color"
+          icon={(
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M8 2.2c-0.18 0-0.35 0.07-0.48 0.2L5.22 4.99c-0.97 1.04-1.51 2.22-1.51 3.52 0 2.14 1.67 3.89 4.29 3.89s4.29-1.75 4.29-3.89c0-1.3-0.54-2.48-1.51-3.52L8.48 2.4C8.35 2.27 8.18 2.2 8 2.2Z"
+                fill="currentColor"
+                opacity="0.22"
+              />
+              <path
+                d="M8 2.2c-0.18 0-0.35 0.07-0.48 0.2L5.22 4.99c-0.97 1.04-1.51 2.22-1.51 3.52 0 2.14 1.67 3.89 4.29 3.89s4.29-1.75 4.29-3.89c0-1.3-0.54-2.48-1.51-3.52L8.48 2.4C8.35 2.27 8.18 2.2 8 2.2Z"
+                stroke="currentColor"
+                strokeWidth="1.1"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M5.6 7.6c0.9 0.3 1.65 0.45 2.4 0.45s1.5-0.15 2.4-0.45"
+                stroke="currentColor"
+                strokeWidth="1.05"
+                strokeLinecap="round"
+              />
+            </svg>
+          )}
+          value={element.fill}
+          fallback="#4e79a7"
+          onChange={(color) => onChangeProp('fill', color)}
+          onReset={() => onChangeProp('fill', null)}
+        />
+      )}
+      {!isImage && !isChart && (
+        <ColorIconPicker
+          title="Shape border color"
+          ariaLabel="Shape border color"
+          icon={(
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect
+                x="2.4"
+                y="3.2"
+                width="11.2"
+                height="9.6"
+                rx="2.2"
+                stroke="currentColor"
+                strokeWidth="1.25"
+              />
+              <rect
+                x="4.6"
+                y="5.4"
+                width="6.8"
+                height="5.2"
+                rx="1.6"
+                stroke="currentColor"
+                strokeWidth="1.05"
+                opacity="0.4"
+              />
+            </svg>
+          )}
+          value={element.stroke}
+          fallback="#000000"
+          onChange={(color) => onChangeProp('stroke', color)}
+          onReset={() => onChangeProp('stroke', null)}
+        />
+      )}
+      {!isChart && !isImage && (
+        <input
+          type="number"
+          min={0}
+          max={20}
+          value={element.strokeWidth || 2}
+          onChange={(e) => onChangeProp('strokeWidth', parseInt(e.target.value || '2', 10))}
+          title="Border width"
+        />
+      )}
+
+      {isChart && (
+        <>
+          <div className="toolbar-divider" />
+          <button onClick={onEditChart} title="Edit chart data">
+            Edit Data
+          </button>
+        </>
+      )}
+
+      <div className="toolbar-divider" />
+
+      <button className="delete-btn" onClick={onDelete} title="Delete element" aria-label="Delete element">
+        <span aria-hidden="true">🗑</span>
+      </button>
+    </div>
+  );
+}
+
 const CANVAS_BASE_WIDTH = 960;
 const CANVAS_BASE_HEIGHT = 720;
+const PRESENTATION_FRAME_PADDING = 64;
+const PX_PER_INCH = 96;
+const DEFAULT_CHART_COLORS = ['#4e79a7','#f28e2c','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ab'];
 
-function Canvas({ slide, selectedElementId, onSelect, onChangeText, onDragStart, onDragEnd, onResizeStart, onResizeEnd }) {
-  const wrapperRef = useRef(null);
-  const [scale, setScale] = useState(1);
+function pxToIn(px) {
+  return Number((px / PX_PER_INCH).toFixed(4));
+}
 
-  const handleTextKeyDown = (event, element) => {
-    if (event.key !== 'Enter') return;
-    const listStyle = element.styles?.listStyle;
-    if (listStyle !== 'bullet' && listStyle !== 'number') return;
+function normalizeColor(color, fallback = '#4e79a7') {
+  const toHex = (num) => {
+    const clamped = Math.max(0, Math.min(255, Number(num)));
+    const hex = Number.isFinite(clamped) ? Math.round(clamped).toString(16).padStart(2, '0') : '00';
+    return hex.toUpperCase();
+  };
 
-    event.preventDefault();
+  const parse = (value) => {
+    if (!value || typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
 
-    const target = event.target;
-    const value = target.value;
-    const selectionStart = target.selectionStart ?? value.length;
-    const selectionEnd = target.selectionEnd ?? value.length;
-    const before = value.slice(0, selectionStart);
-    const after = value.slice(selectionEnd);
-    const lineStart = before.lastIndexOf('\n') + 1;
-    const currentLine = before.slice(lineStart);
-
-    let insert = '\n';
-    if (listStyle === 'bullet') {
-      insert += '• ';
-    } else if (listStyle === 'number') {
-      const match = currentLine.match(/^(\d+)[\.)]\s*/);
-      const nextNumber = match ? parseInt(match[1], 10) + 1 : 1;
-      insert += `${nextNumber}. `;
+    const varMatch = trimmed.match(/^var\((.+)\)$/);
+    if (varMatch && typeof document !== 'undefined' && document?.documentElement) {
+      const parts = varMatch[1].split(',');
+      const varName = parts[0]?.trim();
+      const fallbackValue = parts.slice(1).join(',').trim();
+      try {
+        if (varName) {
+          const computed = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+          if (computed && computed !== trimmed) {
+            const parsedComputed = parse(computed);
+            if (parsedComputed) return parsedComputed;
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to resolve CSS variable color:', trimmed, err);
+      }
+      if (fallbackValue && fallbackValue !== trimmed) {
+        const parsedFallback = parse(fallbackValue);
+        if (parsedFallback) return parsedFallback;
+      }
     }
 
-    const updated = before + insert + after;
-    const newCursorPos = before.length + insert.length;
-    onChangeText(element.id, updated);
-    requestAnimationFrame(() => {
-      target.selectionStart = target.selectionEnd = newCursorPos;
-    });
+    if (/^#([0-9a-fA-F]{3})$/.test(trimmed)) {
+      const [, shortHex] = trimmed.match(/^#([0-9a-fA-F]{3})$/);
+      return shortHex.split('').map((ch) => ch + ch).join('').toUpperCase();
+    }
+
+    if (/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(trimmed)) {
+      return trimmed.slice(1, 7).toUpperCase();
+    }
+
+    if (/^[0-9a-fA-F]{6}$/.test(trimmed)) {
+      return trimmed.toUpperCase();
+    }
+
+    if (/^[0-9a-fA-F]{8}$/.test(trimmed)) {
+      return trimmed.slice(0, 6).toUpperCase();
+    }
+
+    const rgbMatch = trimmed.match(/^rgba?\(([^)]+)\)$/i);
+    if (rgbMatch) {
+      const channels = rgbMatch[1]
+        .split(',')
+        .map((part) => part.trim())
+        .slice(0, 3);
+      if (channels.length === 3) {
+        return channels.map((ch) => {
+          if (ch.endsWith('%')) {
+            return toHex((parseFloat(ch) || 0) * 2.55);
+          }
+          return toHex(ch);
+        }).join('');
+      }
+    }
+
+    if (typeof document !== 'undefined') {
+      try {
+        if (!normalizeColor._colorParserCanvas) {
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = 1;
+          normalizeColor._colorParserCanvas = canvas.getContext('2d');
+        }
+        const ctx = normalizeColor._colorParserCanvas;
+        if (ctx) {
+          ctx.fillStyle = '#000000';
+          ctx.fillStyle = trimmed;
+          const computed = ctx.fillStyle;
+          if (computed && computed !== '#000000') {
+            return parse(computed);
+          }
+        }
+      } catch (err) {
+        console.warn('Color parser failed for value:', trimmed, err);
+      }
+    }
+
+    return null;
+  };
+
+  return parse(color) || parse(fallback) || '4E79A7';
+}
+
+function sanitizeHexColor(value) {
+  if (typeof value !== 'string') return null;
+  const hex = value.trim().replace(/^#/, '');
+  if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+    return hex.toUpperCase();
+  }
+  return null;
+}
+
+function hexToRgb(hex) {
+  const sanitized = sanitizeHexColor(hex);
+  if (!sanitized) return null;
+  return {
+    r: parseInt(sanitized.slice(0, 2), 16),
+    g: parseInt(sanitized.slice(2, 4), 16),
+    b: parseInt(sanitized.slice(4, 6), 16)
+  };
+}
+
+function rgbaFromHex(hex, alpha = 1) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  const clampedAlpha = Math.max(0, Math.min(1, alpha));
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${clampedAlpha})`;
+}
+
+function blendWithWhite(hex, factor = 0.2, alpha = 1) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return null;
+  const amount = Math.max(0, Math.min(1, factor));
+  const r = Math.round(rgb.r + (255 - rgb.r) * amount);
+  const g = Math.round(rgb.g + (255 - rgb.g) * amount);
+  const b = Math.round(rgb.b + (255 - rgb.b) * amount);
+  const clampedAlpha = Math.max(0, Math.min(1, alpha));
+  return `rgba(${r}, ${g}, ${b}, ${clampedAlpha})`;
+}
+
+function getReadableTextColor(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return '#1f2937';
+  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+  return luminance > 0.65 ? '#111827' : '#f8fafc';
+}
+
+function prepareImageOptions(el) {
+  if (!el?.src) return null;
+  const base = {
+    x: pxToIn(el.x || 0),
+    y: pxToIn(el.y || 0),
+    w: pxToIn(el.w || PX_PER_INCH),
+    h: pxToIn(el.h || PX_PER_INCH),
+  };
+  if (el.src.startsWith('data:')) {
+    const match = el.src.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/i);
+    if (match) {
+      const format = match[1].split('/')[1];
+      if (format) {
+        base.extension = format.toLowerCase();
+      }
+      base.contentType = match[1];
+      base.data = el.src; // keep full data URI for PptxGenJS compatibility
+      base.data64 = match[2];
+    } else {
+      base.data = el.src;
+    }
+  } else {
+    base.path = el.src;
+  }
+  return base;
+}
+
+function buildBarLineChart(slide, pptx, el, labels, datasets) {
+  if (!datasets.length) return;
+  const chartData = datasets.map((ds, idx) => ({
+    name: ds.label || `Series ${idx + 1}`,
+    labels,
+    values: (ds.values || []).map(v => Number(v) || 0),
+  }));
+  const chartColors = datasets.map((ds, idx) =>
+    normalizeColor(ds.color || DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length])
+  );
+  const chartType = el.chartType === 'line' ? pptx.ChartType.line : pptx.ChartType.bar;
+  slide.addChart(chartType, chartData, {
+    x: pxToIn(el.x || 0),
+    y: pxToIn(el.y || 0),
+    w: pxToIn(el.w || PX_PER_INCH * 5),
+    h: pxToIn(el.h || PX_PER_INCH * 3),
+    chartColors,
+    showLegend: datasets.length > 1,
+  });
+}
+
+function buildPieChart(slide, pptx, el, labels, datasets) {
+  if (!datasets.length) return;
+  const [dataset] = datasets;
+  const values = (dataset.values || []).map(v => Number(v) || 0);
+  const resolvedLabels = labels.length
+    ? labels
+    : values.map((_, idx) => `Item ${idx + 1}`);
+
+  const palette = Array.isArray(dataset.segmentColors) && dataset.segmentColors.length
+    ? dataset.segmentColors
+    : Array.isArray(dataset.colors) && dataset.colors.length
+      ? dataset.colors
+      : dataset.color
+        ? [dataset.color]
+        : DEFAULT_CHART_COLORS;
+
+  const chartColors = resolvedLabels.map((_, idx) => {
+    const hex = normalizeColor(palette[idx % palette.length]);
+    return hex.startsWith('#') ? hex : `#${hex}`;
+  });
+
+  const data = [{
+    name: dataset.label || 'Series 1',
+    labels: resolvedLabels,
+    values,
+  }];
+
+  slide.addChart(pptx.ChartType.pie, data, {
+    x: pxToIn(el.x || 0),
+    y: pxToIn(el.y || 0),
+    w: pxToIn(el.w || PX_PER_INCH * 4),
+    h: pxToIn(el.h || PX_PER_INCH * 4),
+    chartColors,
+    showLegend: resolvedLabels.length > 0,
+  });
+}
+
+function getMinTextHeight(styles) {
+  const fontSize = Number(styles?.fontSize) || 18;
+  const lineHeight = Number(styles?.lineHeight) || 1.2;
+  const baseline = fontSize * lineHeight;
+  return Math.max(40, Math.ceil(baseline + 16));
+}
+
+function measureTextareaHeight(textarea, styles) {
+  if (!textarea) {
+    return getMinTextHeight(styles);
+  }
+  const previousHeight = textarea.style.height;
+  textarea.style.height = 'auto';
+  const measured = textarea.scrollHeight;
+  textarea.style.height = previousHeight || '100%';
+  return Math.max(getMinTextHeight(styles), Math.ceil(measured));
+}
+
+let hiddenMeasurementTextarea = null;
+
+function getMeasurementTextarea() {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  if (!hiddenMeasurementTextarea) {
+    const textarea = document.createElement('textarea');
+    textarea.setAttribute('aria-hidden', 'true');
+    textarea.style.position = 'absolute';
+    textarea.style.top = '-9999px';
+    textarea.style.left = '-9999px';
+    textarea.style.visibility = 'hidden';
+    textarea.style.pointerEvents = 'none';
+    textarea.style.whiteSpace = 'pre-wrap';
+    textarea.style.wordWrap = 'break-word';
+    textarea.style.overflow = 'hidden';
+    textarea.style.boxSizing = 'border-box';
+    textarea.style.padding = '8px 12px';
+    textarea.style.border = '1px solid transparent';
+    textarea.style.background = 'transparent';
+    document.body.appendChild(textarea);
+    hiddenMeasurementTextarea = textarea;
+  }
+  return hiddenMeasurementTextarea;
+}
+
+function measureTextHeightForWidth(content, styles, width) {
+  const minHeight = getMinTextHeight(styles);
+  const textarea = getMeasurementTextarea();
+  if (!textarea) {
+    return minHeight;
+  }
+
+  const effectiveWidth = Math.max(20, Number(width) || 0);
+  textarea.style.width = `${effectiveWidth}px`;
+  textarea.style.fontSize = `${styles?.fontSize || 18}px`;
+  textarea.style.fontFamily = styles?.fontFamily || 'Arial';
+  textarea.style.fontWeight = styles?.fontWeight === 'bold' ? 'bold' : 'normal';
+  textarea.style.fontStyle = styles?.fontStyle === 'italic' ? 'italic' : 'normal';
+  textarea.style.lineHeight = typeof styles?.lineHeight === 'number'
+    ? `${styles.lineHeight}`
+    : (styles?.lineHeight || '1.2');
+  textarea.value = content || '';
+  textarea.style.height = 'auto';
+
+  const measured = textarea.scrollHeight;
+  return Math.max(minHeight, Math.ceil(measured));
+}
+
+function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChangeText, onDragStart, onResizeStart, isPresenting = false }) {
+  const wrapperRef = useRef(null);
+  const [scale, setScale] = useState(1);
+  const textareaRefs = useRef({});
+
+  const handleTextKeyDown = (event, element) => {
+    if (event.key === 'Enter') {
+      // Handle Enter key - auto-expand height and handle list formatting
+      event.preventDefault();
+      const target = event.target;
+      const textareaNode = textareaRefs.current[element.id] || target;
+      let updatedValue = '';
+      let newCursorPos = 0;
+
+      if (element.content === 'Click to edit text') {
+        updatedValue = '\n';
+        newCursorPos = 1;
+      } else {
+        const value = target.value;
+        const selectionStart = target.selectionStart ?? value.length;
+        const selectionEnd = target.selectionEnd ?? value.length;
+        const before = value.slice(0, selectionStart);
+        const after = value.slice(selectionEnd);
+        const lineStart = before.lastIndexOf('\n') + 1;
+        const currentLine = before.slice(lineStart);
+
+        const listStyle = element.styles?.listStyle || 'none';
+        let insert = '\n';
+        if (listStyle === 'bullet') {
+          insert += '• ';
+        } else if (listStyle === 'number') {
+          const match = currentLine.match(/^(\d+)[\.)]\s*/);
+          const nextNumber = match ? parseInt(match[1], 10) + 1 : 1;
+          insert += `${nextNumber}. `;
+        }
+
+        updatedValue = before + insert + after;
+        newCursorPos = before.length + insert.length;
+      }
+
+      if (textareaNode) {
+        textareaNode.value = updatedValue;
+      }
+      const newHeight = measureTextareaHeight(textareaNode, element.styles);
+      if (typeof onChangeText === 'function') {
+        onChangeText(element.id, updatedValue, newHeight);
+      }
+
+      setTimeout(() => {
+        const node = textareaRefs.current[element.id];
+        if (node) {
+          node.selectionStart = node.selectionEnd = newCursorPos;
+        }
+      }, 0);
+    } else if (event.key === 'Backspace') {
+      // Handle Backspace - auto-shrink height when lines are deleted
+      const target = event.target;
+      const value = target.value;
+      const selectionStart = target.selectionStart ?? value.length;
+
+      // If this is default text and user is trying to delete, replace with empty
+      if (value === 'Click to edit text' && selectionStart > 0) {
+        const textareaNode = textareaRefs.current[element.id] || target;
+        if (textareaNode) {
+          textareaNode.value = '';
+        }
+        const newHeight = measureTextareaHeight(textareaNode, element.styles);
+        if (typeof onChangeText === 'function') {
+          onChangeText(element.id, '', newHeight);
+        }
+        return;
+      }
+
+      // Only auto-resize if we're at the beginning of a line or deleting the last character
+      if (selectionStart === 0 || (selectionStart === 1 && value.length === 1)) {
+        return; // Don't interfere with normal backspace behavior
+      }
+
+      // Let the default backspace happen first
+      setTimeout(() => {
+        const textareaNode = textareaRefs.current[element.id] || target;
+        const newValue = textareaNode ? textareaNode.value : target.value;
+        if (newValue !== value) {
+          const newHeight = measureTextareaHeight(textareaNode, element.styles);
+          if (typeof onChangeText === 'function') {
+            onChangeText(element.id, newValue, newHeight);
+          }
+        }
+      }, 0);
+    }
   };
 
   useEffect(() => {
@@ -955,7 +2572,6 @@ function Canvas({ slide, selectedElementId, onSelect, onChangeText, onDragStart,
       const nextScale = Math.max(Math.min(widthScale, heightScale), 0.1);
       setScale(nextScale);
     };
-
     updateScale();
     window.addEventListener('resize', updateScale);
     let resizeObserver;
@@ -973,102 +2589,220 @@ function Canvas({ slide, selectedElementId, onSelect, onChangeText, onDragStart,
 
   const canvasStyle = {
     background: slide.background,
-    width: CANVAS_BASE_WIDTH * scale,
-    height: CANVAS_BASE_HEIGHT * scale,
+    width: CANVAS_BASE_WIDTH,
+    height: CANVAS_BASE_HEIGHT,
   };
+
+  const handleElementPointerDown = useCallback((event, element) => {
+    if (isPresenting) return;
+    if (!onDragStart) return;
+    if (event.button !== 0) return;
+    if (event.target && (event.target.tagName === 'TEXTAREA' || event.target.closest('textarea'))) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (typeof onSelect === 'function') {
+      onSelect(element.id);
+    }
+    onDragStart(element.id, event, scale);
+  }, [isPresenting, onDragStart, onSelect, scale]);
+
+  const handleCanvasPointerDown = useCallback((event) => {
+    if (isPresenting) return;
+    if (event.target !== event.currentTarget) return;
+    event.stopPropagation();
+    if (typeof onSelect === 'function') {
+      onSelect(null);
+    }
+  }, [isPresenting, onSelect]);
 
   return (
     <div className="canvas-wrapper" ref={wrapperRef}>
-      <div className="canvas" style={canvasStyle}>
+      <div className="canvas" style={canvasStyle} onPointerDown={handleCanvasPointerDown}>
         {slide.elements.map(el => {
+          const isDragging = draggingElementId === el.id;
           const style = {
-            left: el.x * scale,
-            top: el.y * scale,
-            width: el.w * scale,
-            height: el.h * scale,
+            left: el.x,
+            top: el.y,
+            width: el.w,
+            height: el.h,
             transform: `rotate(${el.rotation || 0}deg)`
           };
           const selected = el.id === selectedElementId;
+          const baseClasses = ['el', `${el.type}-el`];
+          if (selected) baseClasses.push('selected');
+          if (isDragging) baseClasses.push('is-dragging');
+
           const commonProps = {
+            onPointerDown: (event) => {
+              handleElementPointerDown(event, el);
+            },
             onClick: (e) => {
-              e.stopPropagation();
-              onSelect(el.id);
-            }
+              if (isPresenting) return;
+              if (e.target === e.currentTarget) {
+                e.stopPropagation();
+                onSelect(el.id);
+              }
+            },
+            className: baseClasses.join(' '),
           };
+
           if (el.type === 'text') {
+            const textBackground = el.styles?.backgroundColor || 'transparent';
+            const hasBorderColor = Boolean(el.styles?.borderColor);
+            const textBorderColor = el.styles?.borderColor || 'transparent';
+            const borderWidthValue = Number.isFinite(el.styles?.borderWidth) ? Math.max(0, el.styles.borderWidth) : (hasBorderColor ? 1.5 : 0);
+            const rawPlaceholder = typeof el.placeholder === 'string' && el.placeholder.trim()
+              ? el.placeholder
+              : null;
+            const placeholderText = (() => {
+              if (!rawPlaceholder) return '';
+              if (rawPlaceholder === DEFAULT_TEXT_PLACEHOLDERS.bullet) return 'Add bullet points';
+              return rawPlaceholder;
+            })();
+            const isPlaceholderActive = !isPresenting && !el.content && Boolean(placeholderText);
             return (
-              <div key={el.id} className={"el text-el" + (selected ? ' selected' : '')} style={style} {...commonProps}>
+              <div
+                key={el.id}
+                id={`element-${el.id}`}
+                style={style}
+                {...commonProps}
+              >
                 <textarea
+                  readOnly={isPresenting}
                   value={el.content}
-                  onChange={e => onChangeText(el.id, e.target.value)}
+                  placeholder={!isPresenting && placeholderText ? placeholderText : undefined}
+                  ref={(node) => {
+                    if (node) {
+                      textareaRefs.current[el.id] = node;
+                    } else {
+                      delete textareaRefs.current[el.id];
+                    }
+                  }}
+                  className={isPlaceholderActive ? 'text-el-input text-el-input--placeholder' : 'text-el-input'}
+                  onChange={e => {
+                    const value = e.target.value;
+                    const textareaNode = textareaRefs.current[el.id] || e.target;
+                    const newHeight = measureTextareaHeight(textareaNode, el.styles);
+                    onChangeText(el.id, value, newHeight);
+                  }}
                   onKeyDown={(e) => handleTextKeyDown(e, el)}
+                  onMouseDown={(e) => {
+                    if (isPresenting) {
+                      e.preventDefault();
+                      return;
+                    }
+                    e.stopPropagation();
+                    // Ensure the textarea gets focus when clicked
+                    e.target.focus();
+                  }}
+                  onClick={(e) => {
+                    if (isPresenting) return;
+                    e.stopPropagation();
+                    // Select the text element if it's not already selected
+                    if (!selected) {
+                      onSelect(el.id);
+                    }
+                    // Ensure the textarea gets focus when clicked
+                    e.target.focus();
+                  }}
+                  onFocus={(e) => {
+                    if (isPresenting) {
+                      e.preventDefault();
+                      e.target.blur();
+                      return;
+                    }
+                    e.stopPropagation();
+                    // Ensure the text element is selected when the textarea gets focus
+                    if (!selected) {
+                      onSelect(el.id);
+                    }
+                  }}
                   style={{
-                    fontSize: (el.styles?.fontSize || 18) * scale,
-                    color: el.styles?.color,
+                    fontSize: el.styles?.fontSize || 18,
+                    color: el.styles?.color || '#111111',
                     fontWeight: el.styles?.fontWeight,
                     fontStyle: el.styles?.fontStyle,
                     textDecoration: el.styles?.textDecoration,
                     textAlign: el.styles?.textAlign,
                     fontFamily: el.styles?.fontFamily || 'Arial',
                     lineHeight: el.styles?.lineHeight || 1.2,
+                    backgroundColor: textBackground,
+                    backgroundClip: 'padding-box',
+                    border: hasBorderColor && borderWidthValue > 0 ? `${borderWidthValue}px solid ${textBorderColor}` : `${borderWidthValue || 1}px solid transparent`,
+                    borderRadius: 12,
+                    boxShadow: hasBorderColor ? '0 0 0 1px rgba(15, 23, 42, 0.06)' : 'none',
+                    padding: '8px 12px',
+                    transition: 'all 0.2s ease',
                   }}
                 />
-                {selected && <ResizeHandles onResizeStart={(dir, evt) => onResizeStart(el.id, dir, evt, scale)} scale={scale} />}
-                {selected && <DragHandle onDragStart={(evt) => onDragStart(el.id, evt, scale)} scale={scale} />}
+                {selected && !isPresenting && (
+                  <ResizeHandles onResizeStart={(dir, evt, s) => onResizeStart(el.id, dir, evt, s)} scale={scale} />
+                )}
               </div>
             );
           }
           if (el.type === 'image') {
             return (
-              <div key={el.id} className={"el image-el" + (selected ? ' selected' : '')} style={style} {...commonProps}>
-                <img src={el.src} alt="" draggable={false} />
-                {selected && <ResizeHandles onResizeStart={(dir, evt) => onResizeStart(el.id, dir, evt, scale)} scale={scale} />}
-                {selected && <DragHandle onDragStart={(evt) => onDragStart(el.id, evt, scale)} scale={scale} />}
+              <div
+                key={el.id}
+                id={`element-${el.id}`}
+                style={style}
+                {...commonProps}
+              >
+                <img src={el.src} alt="" draggable={false} style={{width: '100%', height: '100%', objectFit: 'contain'}} />
+                {selected && !isPresenting && (
+                  <ResizeHandles onResizeStart={(dir, evt, s) => onResizeStart(el.id, dir, evt, s)} scale={scale} />
+                )}
               </div>
             );
           }
           if (el.type === 'chart') {
             return (
-              <div key={el.id} className={"el chart-el" + (selected ? ' selected' : '')} style={style} {...commonProps}>
-                <ChartElement element={el} />
-                {selected && <ResizeHandles onResizeStart={(dir, evt) => onResizeStart(el.id, dir, evt, scale)} scale={scale} />}
-                {selected && <DragHandle onDragStart={(evt) => onDragStart(el.id, evt, scale)} scale={scale} />}
+              <div
+                key={el.id}
+                id={`element-${el.id}`}
+                style={style}
+                {...commonProps}
+              >
+                <ChartElement element={el} scale={1} />
+                {selected && !isPresenting && (
+                  <ResizeHandles onResizeStart={(dir, evt, s) => onResizeStart(el.id, dir, evt, s)} scale={scale} />
+                )}
               </div>
             );
           }
           if (el.type === 'shape') {
             return (
-              <div key={el.id} className={"el shape-el" + (selected ? ' selected' : '')} style={style} {...commonProps}>
-                <ShapeElement element={el} />
-                {selected && <ResizeHandles onResizeStart={(dir, evt) => onResizeStart(el.id, dir, evt, scale)} scale={scale} />}
-                {selected && <DragHandle onDragStart={(evt) => onDragStart(el.id, evt, scale)} scale={scale} />}
+              <div
+                key={el.id}
+                style={style}
+                {...commonProps}
+              >
+                <ShapeElement element={el} scale={1} />
+                {selected && !isPresenting && (
+                  <ResizeHandles onResizeStart={(dir, evt, s) => onResizeStart(el.id, dir, evt, s)} scale={scale} />
+                )}
               </div>
             );
           }
           return null;
         })}
-        <div className="canvas-overlay" onClick={() => onSelect(null)} />
+        <div
+          className="canvas-overlay"
+          onClick={isPresenting ? undefined : () => onSelect(null)}
+        />
       </div>
     </div>
   );
 }
 
-function DragHandle({ onDragStart }) {
-  const handleDown = (evt) => onDragStart(evt);
-  return (
-    <div
-      className="drag-handle"
-      onPointerDown={handleDown}
-      onMouseDown={handleDown}
-      title="Drag to move"
-    >
-      Move
-    </div>
-  );
-}
 
-function ResizeHandles({ onResizeStart }) {
-  const bind = (dir) => (evt) => onResizeStart(dir, evt);
+function ResizeHandles({ onResizeStart, scale }) {
+  const bind = (dir) => (evt) => onResizeStart(dir, evt, scale);
   return (
     <>
       <div className="resize-handle nw" onPointerDown={bind('nw')} onMouseDown={bind('nw')} />
@@ -1097,7 +2831,7 @@ function LoadDialog({ onClose, onLoadId }) {
             const id = key.replace('presentation_', '');
             localPresentations.push({
               id: id,
-              name: data.name || 'Untitled Presentation',
+              name: data.name || '📄 Untitled',
               updatedAt: data.createdAt || new Date().toISOString(),
               slides: data.slides?.length || 0
             });
@@ -1146,6 +2880,26 @@ function LoadDialog({ onClose, onLoadId }) {
     } finally {
       setLoading(false);
     }
+  }, [onClose, onLoadId]);
+
+  const handleDelete = useCallback(async (id) => {
+    try {
+      localStorage.removeItem(`presentation_${id}`);
+    } catch (err) {
+      console.warn('Failed to remove local presentation cache', err);
+    }
+
+    setItems(prev => prev.filter(item => item.id !== id));
+
+    try {
+      const response = await fetch(`/api/presentations/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!response.ok && response.status !== 404) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
+    } catch (err) {
+      console.error('Failed to delete presentation from server', err);
+      alert('Unable to delete the presentation on the server. Please refresh and try again.');
+    }
   }, []);
 
   return (
@@ -1182,7 +2936,7 @@ function LoadDialog({ onClose, onLoadId }) {
               items.map(it => (
                 <div key={it.id} className="list-item">
                   <div>
-                    <div className="name">{it.name || 'Untitled Presentation'}</div>
+                    <div className="name">{it.name || '📄 Untitled'}</div>
                     <div className="meta">
                       {it.slides && <span>{it.slides} slides - </span>}
                       {it.updatedAt && (
@@ -1195,8 +2949,7 @@ function LoadDialog({ onClose, onLoadId }) {
                     <button 
                       onClick={() => {
                         if (window.confirm('Are you sure you want to delete this presentation?')) {
-                          localStorage.removeItem(`presentation_${it.id}`);
-                          setItems(items.filter(item => item.id !== it.id));
+                          handleDelete(it.id);
                         }
                       }}
                       style={{ background: '#dc2626', borderColor: '#dc2626' }}
@@ -1218,72 +2971,207 @@ function LoadDialog({ onClose, onLoadId }) {
 }
 
 function ChartEditor({ element, onUpdate, onClose }) {
+  if (!element) return null;
+
   const [chartType, setChartType] = useState(element.chartType || 'bar');
-  const [labels, setLabels] = useState((element.data?.labels||['A','B','C']).join(','));
-  const [datasets, setDatasets] = useState(element.data?.datasets || [{ label: 'Series 1', values: [3,5,2], color: '#4e79a7' }]);
-  
-  function addDataset() {
-    setDatasets([...datasets, { label: `Series ${datasets.length+1}`, values: labels.split(',').map(()=>0), color: '#f28e2c' }]);
-  }
-  function removeDataset(idx) {
-    setDatasets(datasets.filter((_,i)=>i!==idx));
-  }
-  function updateDataset(idx, field, value) {
-    const next = [...datasets];
-    if (field === 'values') {
-      // Better parsing with validation
-      const values = value.split(',').map(s => {
-        const num = parseFloat(s.trim());
-        return isNaN(num) ? 0 : num;
+  const [labels, setLabels] = useState((element.data?.labels || ['A', 'B', 'C']).join(','));
+  const [datasets, setDatasets] = useState(() =>
+    (element.data?.datasets || [{ label: 'Series 1', values: [3, 5, 2], color: '#4e79a7' }]).map((ds) => ({
+      ...ds,
+      segmentColors: Array.isArray(ds.segmentColors) ? [...ds.segmentColors] : [],
+    }))
+  );
+
+  const labelList = useMemo(
+    () => labels.split(',').map((s) => s.trim()).filter(Boolean),
+    [labels]
+  );
+
+  const ensureLengths = useCallback(
+    (inputDatasets, nextChartType = chartType, nextLabels = labelList) => {
+      if (nextChartType !== 'pie') return inputDatasets;
+      return inputDatasets.map((ds) => {
+        const next = { ...ds };
+        const desired = nextLabels.length;
+        next.segmentColors = Array.isArray(next.segmentColors) ? [...next.segmentColors] : [];
+        if (next.segmentColors.length !== desired) {
+          const palette = next.segmentColors.concat(DEFAULT_CHART_COLORS);
+          next.segmentColors = Array.from({ length: desired }, (_, idx) => palette[idx] || DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length]);
+        }
+        if (!Array.isArray(next.values)) {
+          next.values = Array(desired).fill(0);
+        } else if (next.values.length !== desired) {
+          next.values = Array.from({ length: desired }, (_, idx) => next.values[idx] ?? 0);
+        }
+        return next;
       });
-      next[idx].values = values;
-    } else {
-      next[idx][field] = value;
-    }
-    setDatasets(next);
+    },
+    [chartType, labelList]
+  );
+
+  useEffect(() => {
+    setDatasets((prev) => ensureLengths(prev, chartType, labelList));
+  }, [chartType, labelList, ensureLengths]);
+
+  const handleLabelsChange = (value) => {
+    setLabels(value);
+    const nextLabels = value.split(',').map((s) => s.trim()).filter(Boolean);
+    setDatasets((prev) =>
+      ensureLengths(
+        prev.map((ds) => {
+          const next = { ...ds };
+          const desired = nextLabels.length;
+          if (Array.isArray(next.values)) {
+            next.values = Array.from({ length: desired }, (_, idx) => next.values[idx] ?? 0);
+          } else {
+            next.values = Array(desired).fill(0);
+          }
+          return next;
+        }),
+        chartType,
+        nextLabels
+      )
+    );
+  };
+
+  function addDataset() {
+    setDatasets((prev) =>
+      ensureLengths([
+        ...prev,
+        {
+          label: `Series ${prev.length + 1}`,
+          values: labelList.map(() => 0),
+          color: '#f28e2c',
+          segmentColors: labelList.map((_, idx) => DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length]),
+        },
+      ])
+    );
   }
-  
+
+  function removeDataset(idx) {
+    setDatasets((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function updateDataset(idx, field, value) {
+    setDatasets((prev) => {
+      const next = [...prev];
+      if (!next[idx]) return prev;
+
+      if (field === 'values') {
+        const values = value
+          .split(',')
+          .map((s) => {
+            const num = parseFloat(s.trim());
+            return Number.isFinite(num) ? num : 0;
+          });
+        next[idx] = { ...next[idx], values };
+      } else {
+        next[idx] = { ...next[idx], [field]: value };
+      }
+
+      return ensureLengths(next);
+    });
+  }
+
+  function updateSegmentColor(datasetIndex, segmentIndex, color) {
+    setDatasets((prev) => {
+      const next = prev.map((ds, idx) => {
+        if (idx !== datasetIndex) return ds;
+        const segmentColors = Array.isArray(ds.segmentColors) ? [...ds.segmentColors] : [];
+        segmentColors[segmentIndex] = color;
+        return { ...ds, segmentColors };
+      });
+      return ensureLengths(next);
+    });
+  }
+
+  const handleSave = () => {
+    const lbls = labels.split(',').map((s) => s.trim()).filter(Boolean);
+    const sanitized = datasets.map((ds) => {
+      const next = { ...ds };
+      if (chartType === 'pie') {
+        next.segmentColors = Array.isArray(next.segmentColors)
+          ? next.segmentColors.slice(0, lbls.length)
+          : [];
+        while (next.segmentColors.length < lbls.length) {
+          next.segmentColors.push(DEFAULT_CHART_COLORS[next.segmentColors.length % DEFAULT_CHART_COLORS.length]);
+        }
+      } else {
+        delete next.segmentColors;
+        if (!next.color) {
+          next.color = '#4e79a7';
+        }
+      }
+      return next;
+    });
+    onUpdate({ chartType, data: { labels: lbls, datasets: sanitized } });
+    onClose();
+  };
+
   return (
     <div className="modal">
       <div className="modal-body chart-editor">
         <h3>Edit Chart</h3>
         <label>Chart Type</label>
-        <select value={chartType} onChange={e=>setChartType(e.target.value)}>
+        <select value={chartType} onChange={(e) => setChartType(e.target.value)}>
           <option value="bar">Bar</option>
           <option value="line">Line</option>
           <option value="pie">Pie</option>
         </select>
         <label>Labels (comma-separated)</label>
-        <input 
-          value={labels} 
-          onChange={e=>{
-            setLabels(e.target.value);
-            // Update dataset values to match label count
-            const labelCount = e.target.value.split(',').filter(l => l.trim()).length;
-            setDatasets(prev => prev.map(ds => ({
-              ...ds,
-              values: ds.values.length === labelCount ? ds.values : 
-                      Array(labelCount).fill(0).map((_, i) => ds.values[i] || 0)
-            })));
-          }} 
+        <input
+          value={labels}
+          onChange={(e) => handleLabelsChange(e.target.value)}
           placeholder="e.g., Q1, Q2, Q3, Q4"
         />
         <h4>Data Series</h4>
-        {datasets.map((ds, i) => (
-          <div key={i} className="dataset-row">
-            <input placeholder="Label" value={ds.label} onChange={e=>updateDataset(i,'label',e.target.value)} />
-            <input placeholder="Values (comma-sep)" value={ds.values.join(',')} onChange={e=>updateDataset(i,'values',e.target.value)} />
-            <input type="color" value={ds.color} onChange={e=>updateDataset(i,'color',e.target.value)} />
-            <button onClick={()=>removeDataset(i)}>✕</button>
-          </div>
-        ))}
+        {datasets.map((ds, datasetIndex) => {
+          const baseLabels = labelList.length
+            ? labelList
+            : (ds.values || []).map((_, idx) => `Slice ${idx + 1}`);
+          const segmentLabels = baseLabels.map((label, idx) => label || `Slice ${idx + 1}`);
+          return (
+            <div key={datasetIndex} className="dataset-row">
+              <input
+                placeholder="Label"
+                value={ds.label}
+                onChange={(e) => updateDataset(datasetIndex, 'label', e.target.value)}
+              />
+              <input
+                placeholder="Values (comma-sep)"
+                value={(ds.values || []).join(',')}
+                onChange={(e) => updateDataset(datasetIndex, 'values', e.target.value)}
+              />
+              {chartType === 'pie' ? (
+                <div className="segment-colors">
+                  {segmentLabels.map((label, segmentIndex) => (
+                    <label key={segmentIndex} className="segment-color-field">
+                      <span>{label || `Slice ${segmentIndex + 1}`}</span>
+                      <input
+                        type="color"
+                        value={
+                          ds.segmentColors?.[segmentIndex] ||
+                          DEFAULT_CHART_COLORS[segmentIndex % DEFAULT_CHART_COLORS.length]
+                        }
+                        onChange={(e) => updateSegmentColor(datasetIndex, segmentIndex, e.target.value)}
+                      />
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <input
+                  type="color"
+                  value={ds.color || '#4e79a7'}
+                  onChange={(e) => updateDataset(datasetIndex, 'color', e.target.value)}
+                />
+              )}
+              <button onClick={() => removeDataset(datasetIndex)}>✕</button>
+            </div>
+          );
+        })}
         <button onClick={addDataset}>+ Add Series</button>
         <div className="actions">
-          <button onClick={()=>{
-            const lbls = labels.split(',').map(s=>s.trim()).filter(Boolean);
-            onUpdate({ chartType, data: { labels: lbls, datasets } });
-            onClose();
-          }}>Save</button>
+          <button onClick={handleSave}>Save</button>
           <button onClick={onClose}>Cancel</button>
         </div>
       </div>
@@ -1300,12 +3188,14 @@ function App() {
   const [showLoad, setShowLoad] = useState(false);
   const [showChartEditor, setShowChartEditor] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
-  const [presentMode, setPresentMode] = useState(false);
   const [dragging, setDragging] = useState(null);
   const [resizing, setResizing] = useState(null);
   const [draggingSlideIndex, setDraggingSlideIndex] = useState(null);
   const [dragOverSlideIndex, setDragOverSlideIndex] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const stageRef = useRef(null);
+  const [isPresenting, setIsPresenting] = useState(false);
+  const [presentIndex, setPresentIndex] = useState(0);
   
   const selectedSlide = presentation.slides[currentSlide];
   const selectedElement = selectedSlide?.elements.find(e=>e.id===selectedElementId) || null;
@@ -1369,6 +3259,72 @@ function App() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+
+    const handleFullscreenChange = () => {
+      const doc = document;
+      const fullscreenElement = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
+      const isStageFullscreen = stageRef.current && fullscreenElement === stageRef.current;
+      setIsPresenting(Boolean(isStageFullscreen));
+    };
+
+    const events = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+    events.forEach((evt) => document.addEventListener(evt, handleFullscreenChange));
+
+    return () => {
+      events.forEach((evt) => document.removeEventListener(evt, handleFullscreenChange));
+    };
+  }, []);
+
+  const togglePresent = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const elem = stageRef.current;
+    if (!elem) return;
+
+    const doc = document;
+    const fullscreenElement = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
+
+    if (fullscreenElement === elem) {
+      const exitFullscreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+      exitFullscreen?.call(doc);
+      return;
+    }
+
+    setSelectedElementId(null);
+    setPresentIndex(currentSlide);
+    const requestPromise =
+      elem.requestFullscreen?.() ||
+      elem.webkitRequestFullscreen?.() ||
+      elem.mozRequestFullScreen?.() ||
+      elem.msRequestFullscreen?.();
+
+    if (requestPromise && typeof requestPromise.catch === 'function') {
+      requestPromise.catch(() => setIsPresenting(false));
+    }
+  }, [currentSlide]);
+
+  const exitPresent = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const doc = document;
+    const exitFullscreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+    exitFullscreen?.call(doc);
+    if (presentation.slides[presentIndex]) {
+      setCurrentSlide(presentIndex);
+    }
+  }, [presentation.slides, presentIndex]);
+
+  const goNextSlide = useCallback(() => {
+    const lastIndex = presentation.slides.length - 1;
+    if (lastIndex < 0) return;
+    setPresentIndex((idx) => Math.min(idx + 1, lastIndex));
+  }, [presentation.slides.length]);
+
+  const goPrevSlide = useCallback(() => {
+    if (presentation.slides.length === 0) return;
+    setPresentIndex((idx) => Math.max(idx - 1, 0));
+  }, [presentation.slides.length]);
 
   function saveHistory(newPresentation) {
     const serialized = JSON.stringify(newPresentation);
@@ -1453,7 +3409,7 @@ function App() {
       }
       if (e.key === 'F5') {
         e.preventDefault();
-        onPresent();
+        togglePresent();
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
@@ -1462,55 +3418,143 @@ function App() {
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedElementId, historyIndex, history, currentSlide, presentation.slides.length]);
+  }, [selectedElementId, historyIndex, history, currentSlide, presentation.slides.length, onUndo, onRedo, onDeleteElement, updatePresentation, onSave, onAddSlide, togglePresent]);
+
+  useEffect(() => {
+    if (!isPresenting) return undefined;
+
+    const handlePresentKeys = (e) => {
+      const key = e.key;
+      if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(key)) {
+        e.preventDefault();
+        goNextSlide();
+      } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(key)) {
+        e.preventDefault();
+        goPrevSlide();
+      } else if (key === 'Home') {
+        e.preventDefault();
+        setPresentIndex(0);
+      } else if (key === 'End') {
+        e.preventDefault();
+        setPresentIndex(Math.max(0, presentation.slides.length - 1));
+      } else if (key === 'Escape') {
+        e.preventDefault();
+        exitPresent();
+      }
+    };
+
+    window.addEventListener('keydown', handlePresentKeys, true);
+    return () => window.removeEventListener('keydown', handlePresentKeys, true);
+  }, [isPresenting, presentation.slides.length, exitPresent, goNextSlide, goPrevSlide]);
+
+  useEffect(() => {
+    if (isPresenting && presentation.slides[presentIndex]) {
+      setCurrentSlide(presentIndex);
+    }
+  }, [isPresenting, presentIndex, presentation.slides]);
+
+  useEffect(() => {
+    setPresentIndex((idx) => {
+      if (presentation.slides.length === 0) return 0;
+      return Math.min(Math.max(idx, 0), presentation.slides.length - 1);
+    });
+  }, [presentation.slides.length]);
 
   useEffect(() => {
     if (!dragging && !resizing) return;
+    let rafId = null;
+    let lastUpdate = { clientX: 0, clientY: 0 };
+
+    function markDraggingMoved() {
+      setDragging(prev => {
+        if (!prev || prev.hasMoved) return prev;
+        return { ...prev, hasMoved: true };
+      });
+    }
+
     function handlePointerMove(e) {
-      if (dragging) {
-        updatePresentation(p => {
-          const el = p.slides[currentSlide].elements.find(e=>e.id===dragging.id);
-          if (!el) return;
-          const scale = dragging.scale || 1;
-          el.x = dragging.startX + (e.clientX - dragging.mouseX) / scale;
-          el.y = dragging.startY + (e.clientY - dragging.mouseY) / scale;
-        }, false);
+      lastUpdate = { clientX: e.clientX, clientY: e.clientY };
+
+      if (dragging && !dragging.hasMoved) {
+        markDraggingMoved();
       }
-      if (resizing) {
-        updatePresentation(p => {
-          const el = p.slides[currentSlide].elements.find(e=>e.id===resizing.id);
-          if (!el) return;
-          const scale = resizing.scale || 1;
-          const dx = (e.clientX - resizing.mouseX) / scale;
-          const dy = (e.clientY - resizing.mouseY) / scale;
-          if (resizing.dir === 'se') {
-            el.w = Math.max(20, resizing.startW + dx);
-            el.h = Math.max(20, resizing.startH + dy);
-          } else if (resizing.dir === 'nw') {
-            const newW = Math.max(20, resizing.startW - dx);
-            const newH = Math.max(20, resizing.startH - dy);
-            el.x = resizing.startX + (resizing.startW - newW);
-            el.y = resizing.startY + (resizing.startH - newH);
-            el.w = newW;
-            el.h = newH;
-          } else if (resizing.dir === 'ne') {
-            el.w = Math.max(20, resizing.startW + dx);
-            const newH = Math.max(20, resizing.startH - dy);
-            el.y = resizing.startY + (resizing.startH - newH);
-            el.h = newH;
-          } else if (resizing.dir === 'sw') {
-            const newW = Math.max(20, resizing.startW - dx);
-            el.x = resizing.startX + (resizing.startW - newW);
-            el.w = newW;
-            el.h = Math.max(20, resizing.startH + dy);
-          }
-        }, false);
+      
+      // Cancel previous animation frame if it exists
+      if (rafId) {
+        cancelAnimationFrame(rafId);
       }
+      
+      // Use requestAnimationFrame to batch updates
+      rafId = requestAnimationFrame(() => {
+        if (dragging && dragging.hasMoved) {
+          updatePresentation(p => {
+            const el = p.slides[currentSlide].elements.find(e=>e.id===dragging.id);
+            if (!el) return;
+            const scale = dragging.scale || 1;
+            el.x = dragging.startX + (lastUpdate.clientX - dragging.mouseX) / scale;
+            el.y = dragging.startY + (lastUpdate.clientY - dragging.mouseY) / scale;
+          }, false);
+        }
+        if (resizing) {
+          updatePresentation(p => {
+            const el = p.slides[currentSlide].elements.find(e=>e.id===resizing.id);
+            if (!el) return;
+            const scale = resizing.scale || 1;
+            const dx = (lastUpdate.clientX - resizing.mouseX) / scale;
+            const dy = (lastUpdate.clientY - resizing.mouseY) / scale;
+
+            let nextX = el.x;
+            let nextY = el.y;
+            let nextW = el.w;
+            let nextH = el.h;
+
+            if (resizing.dir === 'se') {
+              nextW = Math.max(20, resizing.startW + dx);
+              nextH = Math.max(20, resizing.startH + dy);
+            } else if (resizing.dir === 'nw') {
+              nextW = Math.max(20, resizing.startW - dx);
+              nextH = Math.max(20, resizing.startH - dy);
+              nextX = resizing.startX + (resizing.startW - nextW);
+              nextY = resizing.startY + (resizing.startH - nextH);
+            } else if (resizing.dir === 'ne') {
+              nextW = Math.max(20, resizing.startW + dx);
+              nextH = Math.max(20, resizing.startH - dy);
+              nextY = resizing.startY + (resizing.startH - nextH);
+            } else if (resizing.dir === 'sw') {
+              nextW = Math.max(20, resizing.startW - dx);
+              nextH = Math.max(20, resizing.startH + dy);
+              nextX = resizing.startX + (resizing.startW - nextW);
+            }
+
+            if (el.type === 'text') {
+              const placeholder = typeof el.placeholder === 'string' ? el.placeholder : '';
+              const textContent = el.content && el.content.length ? el.content : placeholder;
+              const measuredHeight = measureTextHeightForWidth(textContent, el.styles, nextW);
+              const minHeight = getMinTextHeight(el.styles);
+              const bottomEdge = nextY + nextH;
+              const adjustedHeight = Math.max(minHeight, measuredHeight, nextH);
+              if (adjustedHeight !== nextH) {
+                nextH = adjustedHeight;
+                if (resizing.dir.includes('n')) {
+                  nextY = bottomEdge - nextH;
+                }
+              }
+            }
+
+            el.x = nextX;
+            el.y = nextY;
+            el.w = nextW;
+            el.h = nextH;
+          }, false);
+        }
+      });
     }
     const pointerActive = (dragging?.pointerId != null) || (resizing?.pointerId != null);
     function finishInteraction() {
       if (dragging || resizing) {
-        saveHistory(presentation);
+        if (dragging?.hasMoved) {
+          saveHistory(presentation);
+        }
       }
       const captureTarget = resizing?.captureTarget || dragging?.captureTarget;
       const pointerId = resizing?.pointerId ?? dragging?.pointerId;
@@ -1536,13 +3580,16 @@ function App() {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerCancel);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragging, resizing, presentation, currentSlide]);
+  }, [dragging, resizing, presentation, currentSlide, saveHistory]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1558,7 +3605,7 @@ function App() {
 
   function onAddSlide(template) {
     updatePresentation(p => {
-      p.slides.splice(currentSlide+1, 0, makeSlide(template, p.theme));
+      p.slides.splice(currentSlide+1, 0, makeSlide(template));
       setCurrentSlide(currentSlide+1);
       setSelectedElementId(null);
     });
@@ -1581,17 +3628,6 @@ function App() {
     });
   }
 
-  function onMoveSlide(index, direction) {
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= presentation.slides.length) return;
-    updatePresentation(p => {
-      const temp = p.slides[index];
-      p.slides[index] = p.slides[newIndex];
-      p.slides[newIndex] = temp;
-      setCurrentSlide(newIndex);
-    });
-  }
-
   function onReorderSlides(sourceIndex, destinationIndex) {
     if (sourceIndex === destinationIndex || sourceIndex == null || destinationIndex == null) return;
     updatePresentation(p => {
@@ -1603,36 +3639,100 @@ function App() {
   }
 
   function onAddText() {
+    const defaultWidth = 600;
+    const defaultHeight = 140;
+    const centeredX = Math.round((CANVAS_BASE_WIDTH - defaultWidth) / 2);
+    const centeredY = Math.round((CANVAS_BASE_HEIGHT - defaultHeight) / 2);
+    let newElementId = null;
     updatePresentation(p => {
-      const themeConfig = THEMES[p.theme] || THEMES.default;
-      const el = { id: uid('el'), type: 'text', x: 100, y: 150, w: 500, h: 100, rotation: 0, styles: { fontSize: 24, color: themeConfig.textColor, fontWeight: 'normal', fontStyle: 'normal', textDecoration: 'none', textAlign: 'left', fontFamily: 'Arial', lineHeight: 1.4, listStyle: 'none' }, content: 'Click to edit text' };
-      p.slides[currentSlide].elements.push(el);
-      setSelectedElementId(el.id);
+      const themeConfig = DEFAULT_THEME;
+      const element = createThemedTextElement({
+        themeConfig,
+        variant: 'body',
+        x: centeredX,
+        y: centeredY,
+        w: defaultWidth,
+        h: defaultHeight,
+        textAlign: 'center',
+      });
+      newElementId = element.id;
+      p.slides[currentSlide].elements.push(element);
     });
+    if (newElementId) {
+      setSelectedElementId(newElementId);
+    }
   }
 
   function onAddImage(dataUrl) {
+    const newElementId = uid('el');
     updatePresentation(p => {
-      const el = { id: uid('el'), type: 'image', x: 100, y: 150, w: 400, h: 300, rotation: 0, src: dataUrl };
+      const el = { id: newElementId, type: 'image', x: 100, y: 150, w: 400, h: 300, rotation: 0, src: dataUrl };
       p.slides[currentSlide].elements.push(el);
-      setSelectedElementId(el.id);
     });
+    setSelectedElementId(newElementId);
   }
 
   function onAddChart(chartType) {
+    const newElementId = uid('el');
     updatePresentation(p => {
-      const el = { id: uid('el'), type: 'chart', x: 100, y: 150, w: 400, h: 300, rotation: 0, chartType, data: { labels: ['A','B','C'], datasets: [{ label: 'Series', values: [3,5,2], color: '#4e79a7' }] } };
+      const themeConfig = DEFAULT_THEME;
+      const palette = (themeConfig.chartPalette && themeConfig.chartPalette.length)
+        ? themeConfig.chartPalette
+        : DEFAULT_CHART_COLORS;
+      const labels = ['A', 'B', 'C'];
+      const baseDataset = {
+        label: 'Series',
+        values: [3, 5, 2],
+        color: palette[0],
+      };
+      if (chartType === 'pie') {
+        baseDataset.segmentColors = labels.map((_, idx) => palette[idx % palette.length]);
+      }
+      const el = {
+        id: newElementId,
+        type: 'chart',
+        x: 100,
+        y: 150,
+        w: 400,
+        h: 300,
+        rotation: 0,
+        chartType,
+        data: { labels, datasets: [baseDataset] },
+      };
       p.slides[currentSlide].elements.push(el);
-      setSelectedElementId(el.id);
     });
+    setSelectedElementId(newElementId);
   }
 
   function onAddShape(shapeType) {
+    const newElementId = uid('el');
     updatePresentation(p => {
-      const el = { id: uid('el'), type: 'shape', x: 300, y: 200, w: 250, h: shapeType==='line'?4:200, rotation: 0, shapeType, fill: '#4e79a7', stroke: '#000000', strokeWidth: 2 };
+      const themeConfig = DEFAULT_THEME;
+      const shapeDefaults = themeConfig.shapeStyles || {};
+      const fillValue = shapeType === 'line'
+        ? 'transparent'
+        : (shapeDefaults.fill || '#4e79a7');
+      const strokeValue = shapeDefaults.stroke || '#000000';
+      const strokeWidthValue = typeof shapeDefaults.strokeWidth === 'number'
+        ? shapeDefaults.strokeWidth
+        : 2;
+      const el = {
+        id: newElementId,
+        type: 'shape',
+        x: 300,
+        y: 200,
+        w: 250,
+        h: shapeType === 'line' ? 4 : 200,
+        rotation: 0,
+        shapeType,
+        fill: fillValue,
+        stroke: strokeValue,
+        strokeWidth: strokeWidthValue,
+        shadow: shapeDefaults.shadow || null,
+      };
       p.slides[currentSlide].elements.push(el);
-      setSelectedElementId(el.id);
     });
+    setSelectedElementId(newElementId);
   }
 
   function onDeleteElement() {
@@ -1700,10 +3800,22 @@ function App() {
     });
   }
 
-  function onChangeText(elId, value) {
+  function onChangeText(elId, value, newHeight) {
     updatePresentation(p => {
       const el = p.slides[currentSlide].elements.find(e=>e.id===elId);
-      if (el && el.type === 'text') el.content = value;
+      if (el && el.type === 'text') {
+        const placeholder = typeof el.placeholder === 'string' ? el.placeholder : null;
+        const nextValue = typeof value === 'string' ? value : '';
+        el.content = nextValue;
+
+        if (placeholder && (!nextValue || nextValue.trim() === '')) {
+          el.content = '';
+        }
+
+        if (newHeight !== undefined) {
+          el.h = newHeight;
+        }
+      }
     }, false);
   }
 
@@ -1731,7 +3843,8 @@ function App() {
       mouseY: evt?.clientY ?? 0,
       scale: scale || 1,
       pointerId: evt?.pointerId,
-      captureTarget: evt?.target || null
+      captureTarget: evt?.target || null,
+      hasMoved: false
     });
   }
 
@@ -1762,13 +3875,13 @@ function App() {
 
   function onSave() {
     try {
-      // Check if PptxGenJS is available
-      if (typeof PptxGenJS === 'undefined') {
+      const PptxConstructor = resolvePptxGen();
+      if (typeof PptxConstructor !== 'function') {
         // Fallback to JSON export if PptxGenJS is not available
         console.warn('PptxGenJS not available, falling back to JSON export');
         const presentationData = {
           ...presentation,
-          name: presentation.name || 'Untitled Presentation',
+          name: presentation.name || '📄 Untitled',
           createdAt: new Date().toISOString(),
           version: '1.0'
         };
@@ -1789,94 +3902,87 @@ function App() {
       }
       
       // Create actual PowerPoint file using PptxGenJS
-      const pptx = new PptxGenJS();
+      const pptx = ensureChartEnum(new PptxConstructor(), PptxConstructor);
       pptx.layout = 'LAYOUT_WIDE';
       pptx.author = 'PPT Maker';
       pptx.title = presentation.name || 'Presentation';
       
       presentation.slides.forEach(sl => {
         const slide = pptx.addSlide();
-        slide.background = { color: (sl.background || '#ffffff').replace('#','') };
+        slide.background = { color: normalizeColor(sl.background || '#ffffff', '#ffffff') };
         
         sl.elements.forEach(el => {
           try {
             if (el.type === 'text') {
               const textOptions = {
-                x: el.x/96,
-                y: el.y/96,
-                w: el.w/96,
-                h: el.h/96,
+                x: pxToIn(el.x || 0),
+                y: pxToIn(el.y || 0),
+                w: pxToIn(el.w || PX_PER_INCH * 5),
+                h: pxToIn(el.h || PX_PER_INCH * 2),
                 fontSize: el.styles?.fontSize || 18,
-                color: (el.styles?.color||'#111111').replace('#',''),
-                bold: el.styles?.fontWeight==='bold',
-                italic: el.styles?.fontStyle==='italic',
-                underline: el.styles?.textDecoration==='underline' ? { style: 'sng' } : false,
+                color: normalizeColor(el.styles?.color || '#111111', '#111111'),
+                bold: el.styles?.fontWeight === 'bold',
+                italic: el.styles?.fontStyle === 'italic',
+                underline: el.styles?.textDecoration === 'underline' ? { style: 'sng' } : false,
                 align: el.styles?.textAlign || 'left',
                 fontFace: el.styles?.fontFamily || 'Arial',
                 valign: 'top'
               };
+              if (el.styles?.backgroundColor) {
+                const normalizedBg = normalizeColor(el.styles.backgroundColor, el.styles.backgroundColor);
+                if (normalizedBg) {
+                  textOptions.fill = { color: normalizedBg };
+                }
+              }
+              if (el.styles?.borderColor) {
+                const normalizedBorder = normalizeColor(el.styles.borderColor, el.styles.borderColor);
+                const normalizedWidth = Number.isFinite(el.styles?.borderWidth) ? Math.max(0, el.styles.borderWidth) : 1;
+                if (normalizedBorder) {
+                  textOptions.line = { color: normalizedBorder, width: Math.max(0.1, normalizedWidth / PX_PER_INCH) };
+                }
+              }
               slide.addText(el.content || '', textOptions);
             } else if (el.type === 'image') {
-              slide.addImage({ 
-                data: el.src, 
-                x: el.x/96, 
-                y: el.y/96, 
-                w: el.w/96, 
-                h: el.h/96 
-              });
+              const imageOptions = prepareImageOptions(el);
+              if (imageOptions) {
+                slide.addImage(imageOptions);
+              }
             } else if (el.type === 'chart') {
               const labels = el.data?.labels || [];
               const datasets = el.data?.datasets || [];
-              if (el.chartType === 'pie' && datasets.length > 0) {
-                const data = datasets[0].values.map((v,i)=>({ 
-                  name: labels[i]||'Item '+(i+1), 
-                  labels:[labels[i]||'Item '+(i+1)], 
-                  values:[v] 
-                }));
-                slide.addChart(pptx.charts.PIE, data, { 
-                  x: el.x/96, 
-                  y: el.y/96, 
-                  w: el.w/96, 
-                  h: el.h/96, 
-                  showTitle: false 
-                });
-              } else if (datasets.length > 0) {
-                const chartData = datasets.map(ds => ({ 
-                  name: ds.label, 
-                  labels, 
-                  values: ds.values 
-                }));
-                const chartType = el.chartType === 'line' ? pptx.charts.LINE : pptx.charts.BAR;
-                slide.addChart(chartType, chartData, { 
-                  x: el.x/96, 
-                  y: el.y/96, 
-                  w: el.w/96, 
-                  h: el.h/96, 
-                  barDir: 'col',
-                  showTitle: false,
-                  chartColors: datasets.map(ds=>(ds.color||'#4e79a7').replace('#',''))
-                });
+              if (el.chartType === 'pie') {
+                buildPieChart(slide, pptx, el, labels, datasets);
+              } else {
+                buildBarLineChart(slide, pptx, el, labels, datasets);
               }
             } else if (el.type === 'shape') {
-              const opts = { 
-                x: el.x/96, 
-                y: el.y/96, 
-                w: el.w/96, 
-                h: el.h/96, 
-                fill: { color: (el.fill||'#4e79a7').replace('#','') }, 
-                line: { color: (el.stroke||'#000').replace('#',''), width: (el.strokeWidth||2)/12 } 
+              const opts = {
+                x: pxToIn(el.x || 0),
+                y: pxToIn(el.y || 0),
+                w: pxToIn(el.w || PX_PER_INCH),
+                h: pxToIn(el.h || PX_PER_INCH),
+                fill: { color: normalizeColor(el.fill || '#4e79a7', '#4e79a7') },
+                line: {
+                  color: normalizeColor(el.stroke || '#000000', '#000000'),
+                  width: (el.strokeWidth || 2) / 12,
+                },
               };
               if (el.shapeType === 'rect') {
                 slide.addShape(pptx.shapes.RECTANGLE, opts);
+              } else if (el.shapeType === 'square') {
+                const size = Math.min(el.w, el.h);
+                slide.addShape(pptx.shapes.RECTANGLE, { ...opts, w: pxToIn(size), h: pxToIn(size) });
               } else if (el.shapeType === 'circle') {
                 slide.addShape(pptx.shapes.OVAL, opts);
+              } else if (el.shapeType === 'triangle') {
+                slide.addShape(pptx.shapes.RIGHT_TRIANGLE, opts);
               } else if (el.shapeType === 'line') {
                 slide.addShape(pptx.shapes.LINE, { 
-                  x: el.x/96, 
-                  y: el.y/96, 
-                  w: el.w/96, 
+                  x: pxToIn(el.x || 0), 
+                  y: pxToIn(el.y || 0), 
+                  w: pxToIn(el.w || 0), 
                   h: 0,
-                  line: { color: (el.stroke||'#000').replace('#',''), width: (el.strokeWidth||2)/12 } 
+                  line: { color: normalizeColor(el.stroke || '#000', '#000000'), width: (el.strokeWidth||2)/12 } 
                 });
               }
             }
@@ -1943,7 +4049,7 @@ function App() {
         {
           ...presentation,
           id: presentationId,
-          name: presentation.name || 'Untitled Presentation',
+          name: presentation.name || '📄 Untitled',
           createdAt: presentation.createdAt || new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           version: '1.0'
@@ -1984,35 +4090,31 @@ function App() {
     }
   }
 
-  function onPresent() {
-    setPresentMode(true);
-    setSelectedElementId(null);
-  }
-
   function onExport() {
     try {
-      if (typeof PptxGenJS === 'undefined') {
+      const PptxConstructor = resolvePptxGen();
+      if (typeof PptxConstructor !== 'function') {
         alert('Export Failed: PptxGenJS library is not loaded. Please check your internet connection and try again.');
         return;
       }
-      const pptx = new PptxGenJS();
+      const pptx = ensureChartEnum(new PptxConstructor(), PptxConstructor);
       pptx.layout = 'LAYOUT_WIDE';
       pptx.author = 'PPT Maker';
       pptx.title = presentation.name || 'Presentation';
       
       presentation.slides.forEach(sl => {
         const slide = pptx.addSlide();
-        slide.background = { color: (sl.background || '#ffffff').replace('#','') };
+        slide.background = { color: normalizeColor(sl.background || '#ffffff', '#ffffff') };
         sl.elements.forEach(el => {
           try {
             if (el.type === 'text') {
               const textOptions = {
-                x: el.x/96,
-                y: el.y/96,
-                w: el.w/96,
-                h: el.h/96,
+                x: pxToIn(el.x || 0),
+                y: pxToIn(el.y || 0),
+                w: pxToIn(el.w || PX_PER_INCH * 5),
+                h: pxToIn(el.h || PX_PER_INCH * 2),
                 fontSize: el.styles?.fontSize || 18,
-                color: (el.styles?.color||'#111111').replace('#',''),
+                color: normalizeColor(el.styles?.color || '#111111', '#111111'),
                 bold: el.styles?.fontWeight==='bold',
                 italic: el.styles?.fontStyle==='italic',
                 underline: el.styles?.textDecoration==='underline' ? { style: 'sng' } : false,
@@ -2022,44 +4124,40 @@ function App() {
               };
               slide.addText(el.content || '', textOptions);
             } else if (el.type === 'image') {
-              slide.addImage({ data: el.src, x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96 });
+              const imageOptions = prepareImageOptions(el);
+              if (imageOptions) {
+                slide.addImage(imageOptions);
+              }
             } else if (el.type === 'chart') {
               const labels = el.data?.labels || [];
               const datasets = el.data?.datasets || [];
-              if (el.chartType === 'pie' && datasets.length > 0) {
-                const data = datasets[0].values.map((v,i)=>({ name: labels[i]||'Item '+(i+1), labels:[labels[i]||'Item '+(i+1)], values:[v] }));
-                slide.addChart(pptx.charts.PIE, data, { x: el.x/96, y: el.y/96, w: el.w/96, h: el.h/96, showTitle: false });
-              } else if (datasets.length > 0) {
-                const chartData = datasets.map(ds => ({ name: ds.label, labels, values: ds.values }));
-                const chartType = el.chartType === 'line' ? pptx.charts.LINE : pptx.charts.BAR;
-                slide.addChart(chartType, chartData, { 
-                  x: el.x/96, 
-                  y: el.y/96, 
-                  w: el.w/96, 
-                  h: el.h/96, 
-                  barDir: 'col',
-                  showTitle: false,
-                  chartColors: datasets.map(ds=>(ds.color||'#4e79a7').replace('#',''))
-                });
+              if (el.chartType === 'pie') {
+                buildPieChart(slide, pptx, el, labels, datasets);
+              } else {
+                buildBarLineChart(slide, pptx, el, labels, datasets);
               }
             } else if (el.type === 'shape') {
               const opts = { 
-                x: el.x/96, 
-                y: el.y/96, 
-                w: el.w/96, 
-                h: el.h/96, 
-                fill: { color: (el.fill||'#4e79a7').replace('#','') }, 
-                line: { color: (el.stroke||'#000').replace('#',''), width: (el.strokeWidth||2)/12 } 
+                x: pxToIn(el.x || 0), 
+                y: pxToIn(el.y || 0), 
+                w: pxToIn(el.w || PX_PER_INCH), 
+                h: pxToIn(el.h || PX_PER_INCH), 
+                fill: { color: normalizeColor(el.fill||'#4e79a7', '#4e79a7') }, 
+                line: { color: normalizeColor(el.stroke||'#000', '#000000'), width: (el.strokeWidth||2)/12 } 
               };
               if (el.shapeType === 'rect') slide.addShape(pptx.shapes.RECTANGLE, opts);
-              else if (el.shapeType === 'circle') slide.addShape(pptx.shapes.OVAL, opts);
+              else if (el.shapeType === 'square') {
+                const size = Math.min(el.w, el.h);
+                slide.addShape(pptx.shapes.RECTANGLE, { ...opts, w: pxToIn(size), h: pxToIn(size) });
+              } else if (el.shapeType === 'circle') slide.addShape(pptx.shapes.OVAL, opts);
+              else if (el.shapeType === 'triangle') slide.addShape(pptx.shapes.RIGHT_TRIANGLE, opts);
               else if (el.shapeType === 'line') {
                 slide.addShape(pptx.shapes.LINE, { 
-                  x: el.x/96, 
-                  y: el.y/96, 
-                  w: el.w/96, 
+                  x: pxToIn(el.x || 0), 
+                  y: pxToIn(el.y || 0), 
+                  w: pxToIn(el.w || 0), 
                   h: 0,
-                  line: { color: (el.stroke||'#000').replace('#',''), width: (el.strokeWidth||2)/12 } 
+                  line: { color: normalizeColor(el.stroke||'#000', '#000000'), width: (el.strokeWidth||2)/12 } 
                 });
               }
             }
@@ -2076,28 +4174,7 @@ function App() {
     }
   }
 
-  function onApplyTheme(themeId) {
-    if (!THEMES[themeId]) return;
-    updatePresentation(p => {
-      const prevThemeConfig = THEMES[p.theme] || THEMES.default;
-      const nextThemeConfig = THEMES[themeId];
-      p.theme = themeId;
-      p.slides.forEach(slide => {
-        if (prevThemeConfig && slide.background === prevThemeConfig.slideBackground) {
-          slide.background = nextThemeConfig.slideBackground;
-        }
-        slide.elements.forEach(el => {
-          if (el.type === 'text' && el.styles && el.styles.color === prevThemeConfig.textColor) {
-            el.styles.color = nextThemeConfig.textColor;
-          }
-        });
-      });
-    });
-  }
-
-  if (presentMode) {
-    return <PresentationMode presentation={presentation} currentSlide={currentSlide} setCurrentSlide={setCurrentSlide} onExit={()=>setPresentMode(false)} />;
-  }
+  const overlayActive = showLoad || showChartEditor || showShareDialog || isPresenting;
 
   return (
     <div className="app">
@@ -2108,25 +4185,20 @@ function App() {
         onAddChart={onAddChart}
         onAddShape={onAddShape}
         onDeleteElement={onDeleteElement}
-        onChangeProp={onChangeProp}
-        selectedElement={selectedElement}
         onSave={onSave}
         onLoad={() => setShowLoad(true)}
         onExport={onExport}
         onShare={onShare}
-        onPresent={() => setPresentMode(true)}
+        onPresent={togglePresent}
+        isPresenting={isPresenting}
         presentationName={presentation.name}
-        setPresentationName={(name) => setPresentation(prev => ({ ...prev, name }))}
+        onChangeName={(name) => setPresentation(prev => ({ ...prev, name }))}
         onUndo={onUndo}
         onRedo={onRedo}
         canUndo={historyIndex > 0}
         canRedo={historyIndex < history.length - 1}
         onChangeBackground={onChangeBackground}
         currentSlide={selectedSlide}
-        onEditChart={() => setShowChartEditor(true)}
-        onApplyTheme={onApplyTheme}
-        currentTheme={presentation.theme}
-        onApplyListStyle={onApplyListStyle}
       />
 
       <div className="main">
@@ -2143,18 +4215,15 @@ function App() {
         </div>
         <div className={`sidebar${isSidebarCollapsed ? ' collapsed' : ''}`} id="sidebar-panel">
           <div className="sidebar-header">
-            <div
-              style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                color: 'var(--color-text-muted)',
-                marginBottom: '12px',
-              }}
+            <div className="sidebar-header__label">SLIDES ({presentation.slides.length})</div>
+            <button
+              type="button"
+              className="sidebar-header__add-btn"
+              onClick={() => onAddSlide('titleBody')}
+              title="Add new slide"
             >
-              SLIDES ({presentation.slides.length})
-            </div>
+              + 
+            </button>
           </div>
           <div className="sidebar-slides">
             {presentation.slides.map((s, i) => (
@@ -2162,7 +4231,6 @@ function App() {
                 key={s.id}
                 slide={s}
                 index={i}
-                total={presentation.slides.length}
                 active={i === currentSlide}
                 onClick={() => {
                   setCurrentSlide(i);
@@ -2170,8 +4238,6 @@ function App() {
                 }}
                 onDuplicate={() => onDuplicateSlide(i)}
                 onDelete={() => onDeleteSlide(i)}
-                onMoveUp={() => onMoveSlide(i, 'up')}
-                onMoveDown={() => onMoveSlide(i, 'down')}
                 onDragStart={(index) => {
                   setDraggingSlideIndex(index);
                   setDragOverSlideIndex(index);
@@ -2200,19 +4266,69 @@ function App() {
           </div>
         </div>
 
-        <div className="stage">
+        <div className="stage" ref={stageRef}>
           {selectedSlide && (
             <Canvas
               slide={selectedSlide}
               selectedElementId={selectedElementId}
+              draggingElementId={dragging?.id || null}
               onSelect={setSelectedElementId}
               onChangeText={onChangeText}
               onDragStart={onDragStart}
               onResizeStart={onResizeStart}
+              isPresenting={isPresenting}
             />
+          )}
+          {isPresenting && presentation.slides.length > 0 && (
+            <div className="presentation-nav">
+              <button
+                type="button"
+                className="presentation-nav-btn"
+                onClick={goPrevSlide}
+                disabled={presentIndex === 0}
+              >
+                Previous
+              </button>
+              <span className="presentation-nav-counter">
+                {presentIndex + 1} / {presentation.slides.length}
+              </span>
+              <button
+                type="button"
+                className="presentation-nav-btn"
+                onClick={goNextSlide}
+                disabled={presentIndex >= presentation.slides.length - 1}
+              >
+                Next
+              </button>
+              <button
+                type="button"
+                className="presentation-nav-btn presentation-nav-exit"
+                onClick={exitPresent}
+              >
+                Exit
+              </button>
+            </div>
           )}
         </div>
       </div>
+
+      {selectedElement && selectedElement.type === 'text' && !overlayActive && (
+        <FloatingTextToolbar
+          element={selectedElement}
+          draggingElementId={dragging?.id || null}
+          onStyleChange={(prop, value) => onChangeProp(prop, value)}
+          onApplyListStyle={(style) => onApplyListStyle(style)}
+          onDelete={() => onDeleteElement()}
+        />
+      )}
+      {selectedElement && (selectedElement.type === 'shape' || selectedElement.type === 'chart' || selectedElement.type === 'image') && !overlayActive && (
+        <FloatingShapeToolbar
+          element={selectedElement}
+          onChangeProp={(prop, value) => onChangeProp(prop, value)}
+          onEditChart={() => setShowChartEditor(true)}
+          onDelete={() => onDeleteElement()}
+        />
+      )}
 
       {showLoad && <LoadDialog onClose={()=>setShowLoad(false)} onLoadId={onLoadId} />}
       {showChartEditor && selectedElement && selectedElement.type==='chart' && (
@@ -2272,117 +4388,9 @@ function ShareDialog({ presentationId, onClose }) {
       </div>
     </div>
   );
-}function PresentationMode({ presentation, currentSlide, setCurrentSlide, onExit }) {
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (e.key === 'Escape') {
-        onExit();
-      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown') {
-        e.preventDefault();
-        if (currentSlide < presentation.slides.length - 1) {
-          setCurrentSlide(currentSlide + 1);
-        }
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
-        e.preventDefault();
-        if (currentSlide > 0) {
-          setCurrentSlide(currentSlide - 1);
-        }
-      } else if (e.key === 'Home') {
-        e.preventDefault();
-        setCurrentSlide(0);
-      } else if (e.key === 'End') {
-        e.preventDefault();
-        setCurrentSlide(presentation.slides.length - 1);
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentSlide, presentation.slides.length, onExit, setCurrentSlide]);
-
-  const slide = presentation.slides[currentSlide];
-  if (!slide) return null;
-
-  return (
-    <div className="presentation-mode">
-      <div className="presentation-slide" style={{ background: slide.background, aspectRatio: '4/3', maxWidth: '100vw', maxHeight: '100vh' }}>
-        {slide.elements.map(el => {
-          const style = { left: el.x, top: el.y, width: el.w, height: el.h, transform: `rotate(${el.rotation||0}deg)` };
-          if (el.type === 'text') {
-            return (
-              <div
-                key={el.id}
-                className="present-text-el"
-                style={{
-                  ...style,
-                  fontSize: el.styles?.fontSize,
-                  color: el.styles?.color,
-                  fontWeight: el.styles?.fontWeight,
-                  fontStyle: el.styles?.fontStyle,
-                  textDecoration: el.styles?.textDecoration,
-                  textAlign: el.styles?.textAlign,
-                  fontFamily: el.styles?.fontFamily || 'Arial',
-                  whiteSpace: 'pre-wrap',
-                  padding: '4px',
-                }}
-              >
-                {el.content}
-              </div>
-            );
-          }
-          if (el.type === 'image') {
-            return (
-              <div key={el.id} style={style}>
-                <img src={el.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-              </div>
-            );
-          }
-          if (el.type === 'chart') {
-            return (
-              <div key={el.id} style={style}>
-                <ChartElement element={el} />
-              </div>
-            );
-          }
-          if (el.type === 'shape') {
-            return (
-              <div key={el.id} style={style}>
-                <ShapeElement element={el} />
-              </div>
-            );
-          }
-          return null;
-        })}
-      </div>
-      <div className="presentation-controls">
-        <button onClick={onExit} title="Exit (Esc)">Exit</button>
-        <span className="slide-counter">{currentSlide + 1} / {presentation.slides.length}</span>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={() => currentSlide > 0 && setCurrentSlide(currentSlide - 1)}
-            disabled={currentSlide === 0}
-            title="Previous slide"
-          >
-            Previous
-          </button>
-          <button
-            onClick={() => currentSlide < presentation.slides.length - 1 && setCurrentSlide(currentSlide + 1)}
-            disabled={currentSlide === presentation.slides.length - 1}
-            title="Next slide"
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-
-
-
-
-
 
 
 
