@@ -775,26 +775,23 @@ function Toolbar({
       <div className="toolbar-content ribbon-layout" id="toolbar-content">
           {/* File Operations */}
           <div className="ribbon-section">
-            <label className="ribbon-section-label">File</label>
+            <span className="ribbon-section-label">File</span>
             <div className="ribbon-section-content">
               <button onClick={onSave} title="Save (Ctrl+S)" className="ribbon-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                   <polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/>
                 </svg>
-                <span>Save</span>
               </button>
               <button onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="ribbon-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
                 </svg>
-                <span>Undo</span>
               </button>
               <button onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)" className="ribbon-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/>
                 </svg>
-                <span>Redo</span>
               </button>
             </div>
           </div>
@@ -803,13 +800,12 @@ function Toolbar({
 
           {/* Slides */}
           <div className="ribbon-section">
-            <label className="ribbon-section-label">Slides</label>
+            <span className="ribbon-section-label">Slides</span>
             <div className="ribbon-section-content">
               <button onClick={() => onAddSlide('blank')} title="Add blank slide" className="ribbon-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                 </svg>
-                <span>Blank</span>
               </button>
               <div style={{ position: 'relative' }}>
                 <button
@@ -829,7 +825,6 @@ function Toolbar({
                     <path d="M3 10h18"/>
                     <path d="M10 15l2 2 4-4"/>
                   </svg>
-                  <span>Background</span>
                 </button>
                 {showBackgroundMenu && (
                   <div
@@ -922,21 +917,19 @@ function Toolbar({
 
           {/* Insert Elements */}
           <div className="ribbon-section">
-            <label className="ribbon-section-label">Insert</label>
+            <span className="ribbon-section-label">Insert</span>
             <div className="ribbon-section-content">
               <button onClick={onAddText} title="Text box" className="ribbon-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/>
                   <line x1="12" y1="4" x2="12" y2="20"/>
                 </svg>
-                <span>Text</span>
               </button>
               <button onClick={() => fileRef.current && fileRef.current.click()} title="Image" className="ribbon-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                   <circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
                 </svg>
-                <span>Image</span>
               </button>
               <input
                 ref={fileRef}
@@ -964,15 +957,12 @@ function Toolbar({
                   className="ribbon-btn"
                   id="shapes-dropdown-btn"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="6" width="18" height="12" rx="2" ry="2"/>
                   </svg>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span>Shapes</span>
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
-                      <path d="M6 9L2 5h8z"/>
-                    </svg>
-                  </div>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                    <path d="M6 9L2 5h8z"/>
+                  </svg>
                 </button>
                 {showShapesMenu && (
                   <div 
@@ -1023,16 +1013,13 @@ function Toolbar({
                   className="ribbon-btn"
                   id="charts-dropdown-btn"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/>
                     <line x1="6" y1="20" x2="6" y2="16"/>
                   </svg>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span>Charts</span>
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
-                      <path d="M6 9L2 5h8z"/>
-                    </svg>
-                  </div>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                    <path d="M6 9L2 5h8z"/>
+                  </svg>
                 </button>
                 {showChartsMenu && (
                   <div 
@@ -1084,13 +1071,12 @@ function Toolbar({
 
           {/* Presentation Name & Present */}
           <div className="ribbon-section ribbon-section-presentation">
-            <label className="ribbon-section-label">Presentation</label>
             <div className="ribbon-section-content ribbon-presentation-content">
               <input
                 className="name-input-ribbon"
                 value={presentationName}
                 onChange={(e) => onChangeName(e.target.value)}
-                placeholder="Untitled"
+                placeholder="📄 Untitled"
                 onKeyDown={handleNameInputKeyDown}
               />
               <button
@@ -1878,9 +1864,10 @@ function FloatingTextToolbar({ element, draggingElementId, onStyleChange, onAppl
           title="Line spacing"
           aria-label={`Line spacing (${(styles.lineHeight || 1.2)}x)`}
         >
-          <span className="dropdown-icon spacing-icon" aria-hidden="true">{renderSpacingIcon()}</span>
-          <span className="dropdown-value" aria-hidden="true">{`${(styles.lineHeight || 1.2)}x`}</span>
-          <span className="dropdown-caret">▾</span>
+          <span className="dropdown-icon spacing-icon" aria-hidden="true">
+            {renderSpacingIcon()}
+            <span className="dropdown-caret">▾</span>
+          </span>
         </button>
         {spacingMenuOpen && (
           <div className="floating-toolbar__menu floating-toolbar__menu--wide">
@@ -2169,9 +2156,93 @@ function FloatingShapeToolbar({ element, onChangeProp, onEditChart, onDelete }) 
 }
 
 const CANVAS_BASE_WIDTH = 960;
-const CANVAS_BASE_HEIGHT = 720;
+const CANVAS_BASE_HEIGHT = 520;
 const PRESENTATION_FRAME_PADDING = 64;
 const PX_PER_INCH = 96;
+const AUTOPLAY_INTERVAL_MS = 5000;
+
+function parseDimension(value, fallback = 0) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : fallback;
+  }
+  if (typeof value === 'string') {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  if (value == null) return fallback;
+  const coerced = Number(value);
+  return Number.isFinite(coerced) ? coerced : fallback;
+}
+
+function clampElementToCanvas(element) {
+  if (!element) return;
+
+  const width = Math.max(0, parseDimension(element.w, 0));
+  const height = Math.max(0, parseDimension(element.h, 0));
+  const limitedWidth = Math.min(width, CANVAS_BASE_WIDTH);
+  const limitedHeight = Math.min(height, CANVAS_BASE_HEIGHT);
+
+  let currentX = parseDimension(element.x, 0);
+  let currentY = parseDimension(element.y, 0);
+
+  if (!Number.isFinite(currentX)) currentX = 0;
+  if (!Number.isFinite(currentY)) currentY = 0;
+
+  const maxX = Math.max(0, CANVAS_BASE_WIDTH - limitedWidth);
+  const maxY = Math.max(0, CANVAS_BASE_HEIGHT - limitedHeight);
+
+  element.x = Math.min(Math.max(0, currentX), maxX);
+  element.y = Math.min(Math.max(0, currentY), maxY);
+}
+
+function clampResizeToCanvas({ x, y, w, h, dir }) {
+  let nextX = parseDimension(x, 0);
+  let nextY = parseDimension(y, 0);
+  let nextW = Math.max(20, parseDimension(w, 0));
+  let nextH = Math.max(20, parseDimension(h, 0));
+
+  if (nextX < 0) {
+    if (dir && dir.includes('w')) {
+      nextW = Math.max(20, nextW + nextX);
+    }
+    nextX = 0;
+  }
+  if (nextY < 0) {
+    if (dir && dir.includes('n')) {
+      nextH = Math.max(20, nextH + nextY);
+    }
+    nextY = 0;
+  }
+
+  const maxRight = CANVAS_BASE_WIDTH;
+  const maxBottom = CANVAS_BASE_HEIGHT;
+
+  if (nextX + nextW > maxRight) {
+    const overflow = nextX + nextW - maxRight;
+    if (dir && dir.includes('e')) {
+      nextW = Math.max(20, nextW - overflow);
+    } else {
+      nextX = Math.max(0, nextX - overflow);
+    }
+  }
+
+  if (nextY + nextH > maxBottom) {
+    const overflow = nextY + nextH - maxBottom;
+    if (dir && dir.includes('s')) {
+      nextH = Math.max(20, nextH - overflow);
+    } else {
+      nextY = Math.max(0, nextY - overflow);
+    }
+  }
+
+  nextW = Math.min(Math.max(20, nextW), CANVAS_BASE_WIDTH);
+  nextH = Math.min(Math.max(20, nextH), CANVAS_BASE_HEIGHT);
+  nextX = Math.min(Math.max(0, nextX), CANVAS_BASE_WIDTH - nextW);
+  nextY = Math.min(Math.max(0, nextY), CANVAS_BASE_HEIGHT - nextH);
+
+  return { x: nextX, y: nextY, w: nextW, h: nextH };
+}
+
 const DEFAULT_CHART_COLORS = ['#4e79a7','#f28e2c','#e15759','#76b7b2','#59a14f','#edc948','#b07aa1','#ff9da7','#9c755f','#bab0ab'];
 
 function pxToIn(px) {
@@ -3196,6 +3267,7 @@ function App() {
   const stageRef = useRef(null);
   const [isPresenting, setIsPresenting] = useState(false);
   const [presentIndex, setPresentIndex] = useState(0);
+  const [isAutoplaying, setIsAutoplaying] = useState(false);
   
   const selectedSlide = presentation.slides[currentSlide];
   const selectedElement = selectedSlide?.elements.find(e=>e.id===selectedElementId) || null;
@@ -3283,6 +3355,7 @@ function App() {
     const elem = stageRef.current;
     if (!elem) return;
 
+    setIsAutoplaying(false);
     const doc = document;
     const fullscreenElement = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
 
@@ -3293,7 +3366,7 @@ function App() {
     }
 
     setSelectedElementId(null);
-    setPresentIndex(currentSlide);
+    setPresentIndex(0);
     const requestPromise =
       elem.requestFullscreen?.() ||
       elem.webkitRequestFullscreen?.() ||
@@ -3310,6 +3383,7 @@ function App() {
     const doc = document;
     const exitFullscreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
     exitFullscreen?.call(doc);
+    setIsAutoplaying(false);
     if (presentation.slides[presentIndex]) {
       setCurrentSlide(presentIndex);
     }
@@ -3388,6 +3462,7 @@ function App() {
             if (e.key === 'ArrowDown') el.y += step;
             if (e.key === 'ArrowLeft') el.x -= step;
             if (e.key === 'ArrowRight') el.x += step;
+            clampElementToCanvas(el);
           });
         }
       }
@@ -3425,6 +3500,11 @@ function App() {
 
     const handlePresentKeys = (e) => {
       const key = e.key;
+      if (key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsAutoplaying((prev) => !prev);
+        return;
+      }
       if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(key)) {
         e.preventDefault();
         goNextSlide();
@@ -3452,6 +3532,33 @@ function App() {
       setCurrentSlide(presentIndex);
     }
   }, [isPresenting, presentIndex, presentation.slides]);
+
+  useEffect(() => {
+    if (!isPresenting) {
+      if (isAutoplaying) setIsAutoplaying(false);
+      return undefined;
+    }
+    if (!isAutoplaying) return undefined;
+
+    const lastIndex = presentation.slides.length - 1;
+    if (lastIndex <= 0) {
+      if (isAutoplaying) setIsAutoplaying(false);
+      return undefined;
+    }
+
+    const intervalId = setInterval(() => {
+      setPresentIndex((prev) => {
+        if (prev >= lastIndex) {
+          clearInterval(intervalId);
+          setIsAutoplaying(false);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, AUTOPLAY_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [isPresenting, isAutoplaying, presentation.slides.length]);
 
   useEffect(() => {
     setPresentIndex((idx) => {
@@ -3491,8 +3598,11 @@ function App() {
             const el = p.slides[currentSlide].elements.find(e=>e.id===dragging.id);
             if (!el) return;
             const scale = dragging.scale || 1;
-            el.x = dragging.startX + (lastUpdate.clientX - dragging.mouseX) / scale;
-            el.y = dragging.startY + (lastUpdate.clientY - dragging.mouseY) / scale;
+            const proposedX = dragging.startX + (lastUpdate.clientX - dragging.mouseX) / scale;
+            const proposedY = dragging.startY + (lastUpdate.clientY - dragging.mouseY) / scale;
+            el.x = proposedX;
+            el.y = proposedY;
+            clampElementToCanvas(el);
           }, false);
         }
         if (resizing) {
@@ -3541,10 +3651,11 @@ function App() {
               }
             }
 
-            el.x = nextX;
-            el.y = nextY;
-            el.w = nextW;
-            el.h = nextH;
+            const clamped = clampResizeToCanvas({ x: nextX, y: nextY, w: nextW, h: nextH, dir: resizing.dir });
+            el.x = clamped.x;
+            el.y = clamped.y;
+            el.w = clamped.w;
+            el.h = clamped.h;
           }, false);
         }
       });
@@ -3813,7 +3924,9 @@ function App() {
         }
 
         if (newHeight !== undefined) {
-          el.h = newHeight;
+          const clampedHeight = Math.min(Math.max(newHeight, 20), CANVAS_BASE_HEIGHT);
+          el.h = clampedHeight;
+          clampElementToCanvas(el);
         }
       }
     }, false);
@@ -4286,8 +4399,53 @@ function App() {
                 className="presentation-nav-btn"
                 onClick={goPrevSlide}
                 disabled={presentIndex === 0}
+                aria-label="Previous slide"
+                title="Previous slide"
               >
-                Previous
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M16 5.75v12.5c0 .66-.75 1.04-1.29.65l-7.5-5.25a.8.8 0 0 1 0-1.3l7.5-5.25c.54-.39 1.29-.01 1.29.65Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className={`presentation-nav-btn${isAutoplaying ? ' presentation-nav-btn--active' : ''}`}
+                onClick={() => setIsAutoplaying((prev) => !prev)}
+                disabled={presentation.slides.length <= 1}
+                aria-pressed={isAutoplaying}
+                aria-label={isAutoplaying ? 'Pause autoplay' : 'Play slides automatically'}
+                title={isAutoplaying ? 'Pause autoplay (K)' : 'Play slides automatically (K)'}
+              >
+                {isAutoplaying ? (
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <rect x="8" y="5" width="3.1" height="14" rx="1" fill="currentColor" />
+                    <rect x="12.9" y="5" width="3.1" height="14" rx="1" fill="currentColor" />
+                  </svg>
+                ) : (
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M8 5.8c0-.69.76-1.12 1.34-.74l8.6 5.54a.9.9 0 0 1 0 1.52l-8.6 5.54C8.76 17.04 8 16.61 8 15.92V5.8Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                )}
               </button>
               <span className="presentation-nav-counter">
                 {presentIndex + 1} / {presentation.slides.length}
@@ -4297,15 +4455,43 @@ function App() {
                 className="presentation-nav-btn"
                 onClick={goNextSlide}
                 disabled={presentIndex >= presentation.slides.length - 1}
+                aria-label="Next slide"
+                title="Next slide"
               >
-                Next
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M8 5.75v12.5c0 .66.75 1.04 1.29.65l7.5-5.25a.8.8 0 0 0 0-1.3l-7.5-5.25C8.75 5.38 8 5.76 8 6.42Z"
+                    fill="currentColor"
+                  />
+                </svg>
               </button>
               <button
                 type="button"
                 className="presentation-nav-btn presentation-nav-exit"
                 onClick={exitPresent}
+                aria-label="Exit presentation"
+                title="Exit presentation"
               >
-                Exit
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M12 4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.5h3V18h4V6h-4v2.5h-3V4Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M8.47 8.22a.75.75 0 0 1 1.06 1.06L7.81 11H15a.75.75 0 0 1 0 1.5H7.81l1.72 1.72a.75.75 0 1 1-1.06 1.06l-3.25-3.25a.75.75 0 0 1 0-1.06l3.25-3.25Z"
+                    fill="currentColor"
+                  />
+                </svg>
               </button>
             </div>
           )}
