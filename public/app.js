@@ -1,5 +1,8 @@
 const { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } = React;
 
+// Import SlideLayouts component
+const SlideLayouts = window.SlideLayouts || (() => null);
+
 function isValidHexColor(value) {
   return typeof value === 'string' && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim());
 }
@@ -394,71 +397,221 @@ function makeSlide(template = 'blank') {
     background: themeConfig.slideBackground,
     elements: []
   };
-  if (template === 'title') {
-    slide.elements.push(createThemedTextElement({
-      placeholder: DEFAULT_TEXT_PLACEHOLDERS.title,
-      x: 80,
-      y: 180,
-      w: 800,
-      h: 100,
-      textAlign: 'center',
-      themeConfig,
-      variant: 'heading'
-    }));
-    slide.elements.push(createThemedTextElement({
-      placeholder: DEFAULT_TEXT_PLACEHOLDERS.subtitle,
-      x: 80,
-      y: 320,
-      w: 800,
-      h: 80,
-      textAlign: 'center',
-      themeConfig,
-      variant: 'body'
-    }));
-  } else if (template === 'titleBody') {
-    slide.elements.push(createThemedTextElement({
-      placeholder: DEFAULT_TEXT_PLACEHOLDERS.title,
-      x: 80,
-      y: 120,
-      w: 800,
-      h: 110,
-      textAlign: 'center',
-      themeConfig,
-      variant: 'heading'
-    }));
-    slide.elements.push(createThemedTextElement({
-      placeholder: DEFAULT_TEXT_PLACEHOLDERS.body,
-      x: 120,
-      y: 260,
-      w: 720,
-      h: 280,
-      textAlign: 'center',
-      themeConfig,
-      variant: 'body'
-    }));
-  } else if (template === 'titleContent') {
-    slide.elements.push(createThemedTextElement({
-      placeholder: DEFAULT_TEXT_PLACEHOLDERS.title,
-      x: 60,
-      y: 50,
-      w: 840,
-      h: 80,
-      textAlign: 'left',
-      themeConfig,
-      variant: 'heading'
-    }));
-    slide.elements.push(createThemedTextElement({
-      placeholder: DEFAULT_TEXT_PLACEHOLDERS.bullet,
-      x: 60,
-      y: 160,
-      w: 840,
-      h: 400,
-      textAlign: 'left',
-      themeConfig,
-      variant: 'body',
-      listStyle: 'bullet'
-    }));
+
+  switch(template) {
+    case 'title':
+      // Title Slide (centered title and subtitle)
+      slide.elements.push(createThemedTextElement({
+        placeholder: 'Click to edit title',
+        x: 80,
+        y: 180,
+        w: 800,
+        h: 100,
+        textAlign: 'center',
+        themeConfig,
+        variant: 'heading',
+        styles: { fontSize: 48, fontWeight: 'bold' }
+      }));
+      slide.elements.push(createThemedTextElement({
+        placeholder: 'Click to edit subtitle',
+        x: 80,
+        y: 320,
+        w: 800,
+        h: 80,
+        textAlign: 'center',
+        themeConfig,
+        variant: 'body',
+        styles: { fontSize: 24, color: '#666' }
+      }));
+      break;
+
+    case 'title-content':
+      // Title and Content (title with bullet points)
+      slide.elements.push(createThemedTextElement({
+        placeholder: 'Click to edit title',
+        x: 60,
+        y: 50,
+        w: 840,
+        h: 60,
+        textAlign: 'left',
+        themeConfig,
+        variant: 'heading',
+        styles: { fontSize: 36, fontWeight: 'bold' }
+      }));
+      slide.elements.push(createThemedTextElement({
+        placeholder: '• First point\n• Second point\n• Third point',
+        x: 80,
+        y: 140,
+        w: 800,
+        h: 400,
+        textAlign: 'left',
+        themeConfig,
+        variant: 'body',
+        styles: { fontSize: 24, lineHeight: 1.5 },
+        listStyle: 'bullet'
+      }));
+      break;
+
+    case 'section-header':
+      // Section Header (centered section title with background)
+      slide.background = '#F3F4F6';
+      slide.elements.push({
+        id: uid('shape'),
+        type: 'rect',
+        x: 0,
+        y: 200,
+        w: 960,
+        h: 120,
+        fill: themeConfig.primaryColor || '#8B5CF6',
+        stroke: 'none',
+        zIndex: 1
+      });
+      slide.elements.push(createThemedTextElement({
+        placeholder: 'SECTION TITLE',
+        x: 80,
+        y: 230,
+        w: 800,
+        h: 60,
+        textAlign: 'center',
+        themeConfig: { ...themeConfig, textColor: '#FFFFFF' },
+        variant: 'heading',
+        styles: { 
+          fontSize: 32, 
+          fontWeight: 'bold',
+          textTransform: 'uppercase',
+          letterSpacing: '2px'
+        }
+      }));
+      break;
+
+    case 'two-content':
+      // Two Content (title with two columns)
+      slide.elements.push(createThemedTextElement({
+        placeholder: 'Click to edit title',
+        x: 60,
+        y: 50,
+        w: 840,
+        h: 60,
+        textAlign: 'left',
+        themeConfig,
+        variant: 'heading',
+        styles: { fontSize: 36, fontWeight: 'bold' }
+      }));
+      
+      // Left column
+      slide.elements.push(createThemedTextElement({
+        placeholder: 'Left content',
+        x: 60,
+        y: 140,
+        w: 410,
+        h: 400,
+        textAlign: 'left',
+        themeConfig,
+        variant: 'body',
+        styles: { fontSize: 20, lineHeight: 1.5 }
+      }));
+      
+      // Right column
+      slide.elements.push(createThemedTextElement({
+        placeholder: 'Right content',
+        x: 490,
+        y: 140,
+        w: 410,
+        h: 400,
+        textAlign: 'left',
+        themeConfig,
+        variant: 'body',
+        styles: { fontSize: 20, lineHeight: 1.5 }
+      }));
+      break;
+
+    case 'comparison':
+      // Comparison (title with two columns and headers)
+      slide.elements.push(createThemedTextElement({
+        placeholder: 'Comparison',
+        x: 60,
+        y: 50,
+        w: 840,
+        h: 60,
+        textAlign: 'left',
+        themeConfig,
+        variant: 'heading',
+        styles: { fontSize: 36, fontWeight: 'bold' }
+      }));
+      
+      // Left column header
+      slide.elements.push(createThemedTextElement({
+        placeholder: 'Feature 1',
+        x: 60,
+        y: 140,
+        w: 410,
+        h: 40,
+        textAlign: 'center',
+        themeConfig,
+        variant: 'heading',
+        styles: { 
+          fontSize: 24, 
+          fontWeight: 'bold',
+          backgroundColor: 'rgba(139, 92, 246, 0.1)',
+          padding: '8px 0',
+          borderRadius: '4px'
+        }
+      }));
+      
+      // Right column header
+      slide.elements.push(createThemedTextElement({
+        placeholder: 'Feature 2',
+        x: 490,
+        y: 140,
+        w: 410,
+        h: 40,
+        textAlign: 'center',
+        themeConfig,
+        variant: 'heading',
+        styles: { 
+          fontSize: 24, 
+          fontWeight: 'bold',
+          backgroundColor: 'rgba(139, 92, 246, 0.1)',
+          padding: '8px 0',
+          borderRadius: '4px'
+        }
+      }));
+      
+      // Left column content
+      slide.elements.push(createThemedTextElement({
+        placeholder: '• Point 1\n• Point 2\n• Point 3',
+        x: 80,
+        y: 200,
+        w: 370,
+        h: 300,
+        textAlign: 'left',
+        themeConfig,
+        variant: 'body',
+        styles: { fontSize: 20, lineHeight: 1.8 },
+        listStyle: 'bullet'
+      }));
+      
+      // Right column content
+      slide.elements.push(createThemedTextElement({
+        placeholder: '• Point 1\n• Point 2\n• Point 3',
+        x: 510,
+        y: 200,
+        w: 370,
+        h: 300,
+        textAlign: 'left',
+        themeConfig,
+        variant: 'body',
+        styles: { fontSize: 20, lineHeight: 1.8 },
+        listStyle: 'bullet'
+      }));
+      break;
+
+    case 'blank':
+    default:
+      // Blank slide (no elements)
+      break;
   }
+  
   return slide;
 }
 
@@ -633,6 +786,8 @@ function Toolbar({
   const [showChartsMenu, setShowChartsMenu] = useState(false);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
   const [showCustomColorPicker, setShowCustomColorPicker] = useState(false);
+  const [showSlideLayouts, setShowSlideLayouts] = useState(false);
+  const layoutsButtonRef = useRef(null);
 
   const handleNameInputKeyDown = useCallback((e) => {
     if ((e.key === 'Enter' || e.key === 'NumpadEnter') && !e.shiftKey && !e.altKey && !e.metaKey) {
@@ -660,6 +815,7 @@ function Toolbar({
         setShowChartsMenu(false);
         setShowBackgroundMenu(false);
         setShowCustomColorPicker(false);
+        setShowSlideLayouts(false);
       }
     };
     document.addEventListener('click', handleClickOutside);
@@ -802,11 +958,200 @@ function Toolbar({
           <div className="ribbon-section">
             <span className="ribbon-section-label">Slides</span>
             <div className="ribbon-section-content">
-              <button onClick={() => onAddSlide('blank')} title="Add blank slide" className="ribbon-btn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                </svg>
-              </button>
+              <div style={{ position: 'relative' }}>
+                <button 
+                  ref={layoutsButtonRef}
+                  onClick={(e) => { 
+                    setShowSlideLayouts(!showSlideLayouts);
+                    setShowShapesMenu(false);
+                    setShowChartsMenu(false);
+                    setShowBackgroundMenu(false);
+                  }} 
+                  title="Add slide with layout" 
+                  className="ribbon-btn"
+                  id="layouts-dropdown-btn"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="12" y1="8" x2="12" y2="16"/>
+                    <line x1="8" y1="12" x2="16" y2="12"/>
+                  </svg>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                    <path d="M6 9L2 5h8z"/>
+                  </svg>
+                </button>
+                {showSlideLayouts && (
+                  <div 
+                    className="ribbon-dropdown-menu"
+                    style={{
+                      width: '500px',
+                      padding: '16px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      maxHeight: '60vh',
+                      overflowY: 'auto'
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: '#2d3748' }}>Choose a Layout</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                      <div 
+                        className="layout-option" 
+                        onClick={() => { onAddSlide('title'); setShowSlideLayouts(false); }}
+                        style={{ cursor: 'pointer', textAlign: 'center' }}
+                        title="Title Slide"
+                      >
+                        <div style={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '4px',
+                          height: '80px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          padding: '8px',
+                          marginBottom: '8px'
+                        }}>
+                          <div style={{ width: '60%', height: '12px', backgroundColor: '#4f46e5', borderRadius: '2px', marginBottom: '6px' }}></div>
+                          <div style={{ width: '40%', height: '8px', backgroundColor: '#cbd5e1', borderRadius: '2px' }}></div>
+                        </div>
+                        <span style={{ fontSize: '12px', color: '#4a5568' }}>Title</span>
+                      </div>
+                      <div 
+                        className="layout-option" 
+                        onClick={() => { onAddSlide('title-content'); setShowSlideLayouts(false); }}
+                        style={{ cursor: 'pointer', textAlign: 'center' }}
+                        title="Title and Content"
+                      >
+                        <div style={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '4px',
+                          height: '80px',
+                          padding: '8px',
+                          marginBottom: '8px'
+                        }}>
+                          <div style={{ width: '60%', height: '10px', backgroundColor: '#4f46e5', borderRadius: '2px', marginBottom: '8px' }}></div>
+                          <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px', marginBottom: '4px' }}></div>
+                          <div style={{ width: '90%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px', marginBottom: '4px' }}></div>
+                          <div style={{ width: '80%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px' }}></div>
+                        </div>
+                        <span style={{ fontSize: '12px', color: '#4a5568' }}>Title and Content</span>
+                      </div>
+                      <div 
+                        className="layout-option" 
+                        onClick={() => { onAddSlide('section-header'); setShowSlideLayouts(false); }}
+                        style={{ cursor: 'pointer', textAlign: 'center' }}
+                        title="Section Header"
+                      >
+                        <div style={{ 
+                          backgroundColor: '#f8fafc', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '4px',
+                          height: '80px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          padding: '8px',
+                          marginBottom: '8px'
+                        }}>
+                          <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>SECTION</div>
+                          <div style={{ width: '70%', height: '10px', backgroundColor: '#4f46e5', borderRadius: '2px' }}></div>
+                        </div>
+                        <span style={{ fontSize: '12px', color: '#4a5568' }}>Section Header</span>
+                      </div>
+                      <div 
+                        className="layout-option" 
+                        onClick={() => { onAddSlide('two-content'); setShowSlideLayouts(false); }}
+                        style={{ cursor: 'pointer', textAlign: 'center' }}
+                        title="Two Content"
+                      >
+                        <div style={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '4px',
+                          height: '80px',
+                          padding: '8px',
+                          marginBottom: '8px',
+                          display: 'flex',
+                          flexDirection: 'column'
+                        }}>
+                          <div style={{ width: '50%', height: '8px', backgroundColor: '#4f46e5', borderRadius: '2px', marginBottom: '8px' }}></div>
+                          <div style={{ display: 'flex', flex: 1, gap: '8px' }}>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px' }}></div>
+                              <div style={{ width: '80%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px' }}></div>
+                            </div>
+                            <div style={{ width: '1px', backgroundColor: '#e2e8f0' }}></div>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px' }}></div>
+                              <div style={{ width: '80%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px' }}></div>
+                            </div>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '12px', color: '#4a5568' }}>Two Content</span>
+                      </div>
+                      <div 
+                        className="layout-option" 
+                        onClick={() => { onAddSlide('comparison'); setShowSlideLayouts(false); }}
+                        style={{ cursor: 'pointer', textAlign: 'center' }}
+                        title="Comparison"
+                      >
+                        <div style={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '4px',
+                          height: '80px',
+                          padding: '8px',
+                          marginBottom: '8px',
+                          display: 'flex',
+                          flexDirection: 'column'
+                        }}>
+                          <div style={{ width: '60%', height: '8px', backgroundColor: '#4f46e5', borderRadius: '2px', marginBottom: '12px' }}></div>
+                          <div style={{ display: 'flex', flex: 1, gap: '12px' }}>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ fontSize: '8px', color: '#94a3b8', alignSelf: 'flex-start' }}>COMPARISON</div>
+                              <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px' }}></div>
+                              <div style={{ width: '80%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px' }}></div>
+                            </div>
+                            <div style={{ width: '1px', backgroundColor: '#e2e8f0' }}></div>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ fontSize: '8px', color: '#94a3b8', alignSelf: 'flex-start' }}>COMPARISON</div>
+                              <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px' }}></div>
+                              <div style={{ width: '80%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px' }}></div>
+                            </div>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '12px', color: '#4a5568' }}>Comparison</span>
+                      </div>
+                      <div 
+                        className="layout-option" 
+                        onClick={() => { onAddSlide('blank'); setShowSlideLayouts(false); }}
+                        style={{ cursor: 'pointer', textAlign: 'center' }}
+                        title="Blank"
+                      >
+                        <div style={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '4px',
+                          height: '80px',
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          marginBottom: '8px',
+                          backgroundImage: 'linear-gradient(45deg, #f8fafc 25%, transparent 25%), linear-gradient(-45deg, #f8fafc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f8fafc 75%), linear-gradient(-45deg, transparent 75%, #f8fafc 75%)',
+                          backgroundSize: '16px 16px',
+                          backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px'
+                        }}>
+                        </div>
+                        <span style={{ fontSize: '12px', color: '#4a5568' }}>Blank</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
               <div style={{ position: 'relative' }}>
                 <button
                   ref={backgroundButtonRef}
@@ -1613,9 +1958,27 @@ function FloatingTextToolbar({ element, draggingElementId, onStyleChange, onAppl
     const rect = node.getBoundingClientRect();
     const toolbarRect = toolbarRef.current.getBoundingClientRect();
     const canvasRect = canvas.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
 
     const gap = 12;
-    const top = Math.max(canvasRect.top + 8, rect.top - toolbarRect.height - gap);
+    const minTop = canvasRect.top + 8;
+    const maxBottom = Math.min(viewportHeight - toolbarRect.height - 8, canvasRect.bottom - toolbarRect.height - 8);
+    
+    // Calculate preferred position (above the element)
+    let top = rect.top - toolbarRect.height - gap;
+    
+    // If not enough space above, try below the element
+    if (top < minTop) {
+      top = rect.bottom + gap;
+      
+      // If still not enough space below, position it at the bottom of the canvas
+      if (top + toolbarRect.height > canvasRect.bottom - 8) {
+        top = maxBottom;
+      }
+    }
+    
+    // Ensure the toolbar stays within the canvas bounds
+    top = Math.max(minTop, Math.min(top, maxBottom));
 
     let left = rect.left + rect.width / 2 - toolbarRect.width / 2;
     left = Math.max(canvasRect.left + 8, Math.min(left, canvasRect.right - toolbarRect.width - 8));
@@ -3268,9 +3631,31 @@ function App() {
   const [isPresenting, setIsPresenting] = useState(false);
   const [presentIndex, setPresentIndex] = useState(0);
   const [isAutoplaying, setIsAutoplaying] = useState(false);
+  const [showLayouts, setShowLayouts] = useState(false);
   
   const selectedSlide = presentation.slides[currentSlide];
   const selectedElement = selectedSlide?.elements.find(e=>e.id===selectedElementId) || null;
+
+  const handleAddSlideWithLayout = useCallback((layoutId) => {
+    const newSlide = makeSlide(layoutId);
+    setPresentation(prev => {
+      const newSlides = [...prev.slides];
+      newSlides.splice(currentSlide + 1, 0, newSlide);
+      return { ...prev, slides: newSlides };
+    });
+    setCurrentSlide(currentSlide + 1);
+    setShowLayouts(false);
+    
+    // Update history
+    const newState = {
+      ...presentation,
+      slides: [...presentation.slides.slice(0, currentSlide + 1), newSlide, ...presentation.slides.slice(currentSlide + 1)]
+    };
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(JSON.stringify(newState));
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  }, [currentSlide, presentation, history, historyIndex]);
 
   // Load presentation from URL query parameter on mount
   useEffect(() => {
@@ -3362,19 +3747,26 @@ function App() {
     if (fullscreenElement === elem) {
       const exitFullscreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
       exitFullscreen?.call(doc);
+      setIsPresenting(false);
       return;
     }
 
     setSelectedElementId(null);
+    // Always start presentation from the first slide
     setPresentIndex(0);
-    const requestPromise =
-      elem.requestFullscreen?.() ||
-      elem.webkitRequestFullscreen?.() ||
-      elem.mozRequestFullScreen?.() ||
-      elem.msRequestFullscreen?.();
+    setIsPresenting(true);
+    
+    const requestFullscreen = 
+      elem.requestFullscreen || 
+      elem.webkitRequestFullscreen || 
+      elem.mozRequestFullScreen || 
+      elem.msRequestFullscreen;
 
-    if (requestPromise && typeof requestPromise.catch === 'function') {
-      requestPromise.catch(() => setIsPresenting(false));
+    if (requestFullscreen) {
+      const promise = requestFullscreen.call(elem);
+      if (promise && typeof promise.catch === 'function') {
+        promise.catch(() => setIsPresenting(false));
+      }
     }
   }, [currentSlide]);
 
@@ -3437,21 +3829,29 @@ function App() {
 
   useEffect(() => {
     function handleKeyDown(e) {
+      // Handle F5 key first (before browser catches it)
+      // Handle F5 or F11 for presentation mode (F11 is standard fullscreen in browsers)
+      if (e.key === 'F5' || e.key === 'F11' || e.key.toLowerCase() === 'f5' || e.key.toLowerCase() === 'f11') {
+        e.preventDefault();
+        e.stopPropagation();
+        // Small delay to ensure the browser doesn't process the F11 key
+        setTimeout(() => togglePresent(), 50);
+        return false;
+      }
+
+      // Other keyboard shortcuts
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         onUndo();
-      }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
         onRedo();
-      }
-      if (selectedElementId && (e.key === 'Delete' || e.key === 'Backspace')) {
+      } else if (selectedElementId && (e.key === 'Delete' || e.key === 'Backspace')) {
         if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
           e.preventDefault();
           onDeleteElement();
         }
-      }
-      if (selectedElementId && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+      } else if (selectedElementId && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
         if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
           e.preventDefault();
           const step = e.shiftKey ? 10 : 1;
@@ -3465,28 +3865,20 @@ function App() {
             clampElementToCanvas(el);
           });
         }
-      }
-      // Slide navigation with PageUp/PageDown
-      if (e.key === 'PageUp' && currentSlide > 0) {
+      } else if (e.key === 'PageUp' && currentSlide > 0) {
+        // Slide navigation with PageUp/PageDown
         e.preventDefault();
         setCurrentSlide(currentSlide - 1);
         setSelectedElementId(null);
-      }
-      if (e.key === 'PageDown' && currentSlide < presentation.slides.length - 1) {
+      } else if (e.key === 'PageDown' && currentSlide < presentation.slides.length - 1) {
         e.preventDefault();
         setCurrentSlide(currentSlide + 1);
         setSelectedElementId(null);
-      }
-      // Quick shortcuts
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        // Quick shortcuts
         e.preventDefault();
         onSave();
-      }
-      if (e.key === 'F5') {
-        e.preventDefault();
-        togglePresent();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
         onAddSlide('blank');
       }
