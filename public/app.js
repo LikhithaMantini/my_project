@@ -111,43 +111,301 @@ const TOOLBAR_TABS = [
   { id: 'insert', label: 'Insert' },
 ];
 
-const DEFAULT_THEME = {
-  slideBackground: '#ffffff',
-  textColor: '#111111',
-  heading: {
-    fontFamily: 'Arial',
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#111111',
-    lineHeight: 1.2,
-  },
-  body: {
-    fontFamily: 'Arial',
-    fontSize: 20,
-    fontWeight: 'normal',
-    color: '#1f2937',
-    lineHeight: 1.4,
-  },
-  placeholders: {
-    title: {
-      fontFamily: 'Arial',
-      color: 'rgba(17,24,39,0.45)',
-      fontWeight: '600',
+const THEMES = [
+  {
+    id: 'blank',
+    name: 'Blank',
+    slideBackground: '#ffffff',
+    textColor: '#1f2937',
+    primaryColor: '#2563eb',
+    heading: {
+      fontFamily: 'Calibri, Arial, sans-serif',
+      fontSize: 44,
+      fontWeight: '700',
+      color: '#111827',
+      lineHeight: 1.16,
     },
     body: {
-      fontFamily: 'Arial',
-      color: 'rgba(71,85,105,0.55)',
-      fontStyle: 'italic',
+      fontFamily: 'Calibri, Arial, sans-serif',
+      fontSize: 24,
+      fontWeight: '400',
+      color: '#1f2937',
+      lineHeight: 1.45,
+    },
+    placeholders: {
+      title: { fontFamily: 'Calibri, Arial, sans-serif', color: 'rgba(15,23,42,0.38)', fontWeight: '600' },
+      body: { fontFamily: 'Calibri, Arial, sans-serif', color: 'rgba(71,85,105,0.5)', fontStyle: 'italic' },
+    },
+    accentColors: ['#2563eb', '#9333ea', '#f59e0b', '#10b981', '#ef4444', '#38bdf8'],
+    shapeStyles: {
+      fill: '#2563eb',
+      stroke: 'rgba(37,99,235,0.25)',
+      strokeWidth: 2,
+      shadow: '0 10px 30px rgba(37,99,235,0.18)',
+    },
+    chartPalette: ['#2563eb', '#9333ea', '#f59e0b', '#10b981', '#ef4444', '#38bdf8'],
+  },
+  {
+    id: 'slice',
+    name: 'Slice',
+    slideBackground: 'linear-gradient(135deg, #f97316 0%, #fb923c 45%, #fff7ed 100%)',
+    textColor: '#1f2937',
+    primaryColor: '#ea580c',
+    heading: {
+      fontFamily: 'Franklin Gothic Medium, Arial Narrow, Arial, sans-serif',
+      fontSize: 48,
+      fontWeight: '700',
+      color: '#9a3412',
+      lineHeight: 1.1,
+    },
+    body: {
+      fontFamily: 'Calibri, Arial, sans-serif',
+      fontSize: 24,
+      fontWeight: '400',
+      color: '#1f2937',
+      lineHeight: 1.5,
+    },
+    placeholders: {
+      title: { fontFamily: 'Franklin Gothic Medium, Arial Narrow, Arial, sans-serif', color: 'rgba(79,70,229,0.55)', fontWeight: '700' },
+      body: { fontFamily: 'Calibri, Arial, sans-serif', color: 'rgba(148,163,184,0.65)', fontStyle: 'italic' },
+    },
+    accentColors: ['#ea580c', '#facc15', '#0f766e', '#2563eb', '#f97316', '#fb7185'],
+    shapeStyles: {
+      fill: '#ea580c',
+      stroke: 'rgba(234,88,12,0.25)',
+      strokeWidth: 0,
+      shadow: '0 12px 30px rgba(234,88,12,0.25)',
+    },
+    chartPalette: ['#ea580c', '#f59e0b', '#facc15', '#0f766e', '#0369a1', '#db2777'],
+  },
+  {
+    id: 'wisp',
+    name: 'Wisp',
+    slideBackground: 'linear-gradient(180deg, #f5f3ff 0%, #e0f2fe 100%)',
+    textColor: '#1e293b',
+    primaryColor: '#6366f1',
+    heading: {
+      fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif',
+      fontSize: 46,
+      fontWeight: '700',
+      color: '#312e81',
+      lineHeight: 1.18,
+    },
+    body: {
+      fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif',
+      fontSize: 23,
+      fontWeight: '400',
+      color: '#1e293b',
+      lineHeight: 1.55,
+    },
+    placeholders: {
+      title: { fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif', color: 'rgba(51,65,85,0.5)', fontWeight: '600' },
+      body: { fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif', color: 'rgba(100,116,139,0.55)', fontStyle: 'italic' },
+    },
+    accentColors: ['#6366f1', '#4338ca', '#38bdf8', '#0ea5e9', '#ec4899', '#f97316'],
+    shapeStyles: {
+      fill: 'rgba(99,102,241,0.9)',
+      stroke: 'rgba(99,102,241,0.3)',
+      strokeWidth: 2,
+      shadow: '0 12px 32px rgba(99,102,241,0.3)',
+    },
+    chartPalette: ['#6366f1', '#38bdf8', '#0ea5e9', '#9333ea', '#ec4899', '#f472b6'],
+  },
+  {
+    id: 'organic',
+    name: 'Organic',
+    slideBackground: 'linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%)',
+    textColor: '#064e3b',
+    primaryColor: '#047857',
+    heading: {
+      fontFamily: 'Source Serif Pro, Georgia, serif',
+      fontSize: 48,
+      fontWeight: '700',
+      color: '#065f46',
+      lineHeight: 1.14,
+    },
+    body: {
+      fontFamily: 'Source Sans Pro, Arial, sans-serif',
+      fontSize: 24,
+      fontWeight: '400',
+      color: '#065f46',
+      lineHeight: 1.58,
+    },
+    placeholders: {
+      title: { fontFamily: 'Source Serif Pro, Georgia, serif', color: 'rgba(4,120,87,0.5)', fontWeight: '600' },
+      body: { fontFamily: 'Source Sans Pro, Arial, sans-serif', color: 'rgba(15,118,110,0.5)', fontStyle: 'italic' },
+    },
+    accentColors: ['#047857', '#0f766e', '#10b981', '#f59e0b', '#f97316', '#ec4899'],
+    shapeStyles: {
+      fill: '#10b981',
+      stroke: 'rgba(16,185,129,0.25)',
+      strokeWidth: 0,
+      shadow: '0 14px 34px rgba(16,185,129,0.3)',
+    },
+    chartPalette: ['#047857', '#10b981', '#34d399', '#f97316', '#f59e0b', '#ec4899'],
+  },
+  {
+    id: 'ion-boardroom',
+    name: 'Ion Boardroom',
+    slideBackground: 'linear-gradient(180deg, #0f172a 0%, #1e293b 55%, #111827 100%)',
+    textColor: '#e2e8f0',
+    primaryColor: '#38bdf8',
+    heading: {
+      fontFamily: 'Roboto Condensed, Arial Narrow, Arial, sans-serif',
+      fontSize: 46,
+      fontWeight: '700',
+      color: '#e2e8f0',
+      lineHeight: 1.18,
+      letterSpacing: 0.02,
+    },
+    body: {
+      fontFamily: 'Roboto, Helvetica, Arial, sans-serif',
+      fontSize: 23,
+      fontWeight: '400',
+      color: '#cbd5f5',
+      lineHeight: 1.6,
+    },
+    placeholders: {
+      title: { fontFamily: 'Roboto Condensed, Arial Narrow, Arial, sans-serif', color: 'rgba(226,232,240,0.45)', fontWeight: '600' },
+      body: { fontFamily: 'Roboto, Helvetica, Arial, sans-serif', color: 'rgba(148,163,184,0.5)', fontStyle: 'italic' },
+    },
+    accentColors: ['#38bdf8', '#0ea5e9', '#22d3ee', '#f97316', '#facc15', '#a855f7'],
+    shapeStyles: {
+      fill: '#38bdf8',
+      stroke: 'rgba(14,165,233,0.4)',
+      strokeWidth: 0,
+      shadow: '0 18px 44px rgba(14,165,233,0.45)',
+    },
+    chartPalette: ['#38bdf8', '#0ea5e9', '#22d3ee', '#f97316', '#facc15', '#a855f7'],
+  },
+]
+;
+
+const THEMES_BY_ID = THEMES.reduce((acc, theme) => {
+  acc[theme.id] = theme;
+  return acc;
+}, {});
+
+const DEFAULT_THEME = THEMES[0];
+
+function resolveTheme(themeId) {
+  return THEMES_BY_ID[themeId] || DEFAULT_THEME;
+}
+
+function applyThemeToTextElement(element, themeConfig) {
+  const variant = element.textVariant === 'heading' ? 'heading' : 'body';
+  const variantStyles = themeConfig?.[variant] || themeConfig?.body || DEFAULT_THEME.body;
+  const placeholderStyles = themeConfig?.placeholders || {};
+  const nextStyles = { ...(element.styles || {}) };
+
+  if (variantStyles?.fontFamily) nextStyles.fontFamily = variantStyles.fontFamily;
+  if (variantStyles?.color) nextStyles.color = variantStyles.color;
+  if (Number.isFinite(variantStyles?.lineHeight)) nextStyles.lineHeight = variantStyles.lineHeight;
+  if (Number.isFinite(variantStyles?.fontSize)) {
+    nextStyles.fontSize = variantStyles.fontSize;
+  }
+
+  const nextElement = {
+    ...element,
+    styles: nextStyles,
+  };
+
+  if (element.placeholder) {
+    const key = getPlaceholderKey(element.placeholder);
+    const placeholderStyle = key && placeholderStyles[key] ? placeholderStyles[key] : null;
+    if (placeholderStyle) {
+      nextElement.placeholderStyle = placeholderStyle;
     }
-  },
-  shapeStyles: {
-    fill: '#8B5CF6',
-    stroke: 'rgba(59,130,246,0.35)',
-    strokeWidth: 2,
-    shadow: '0 10px 30px rgba(139,92,246,0.25)'
-  },
-  chartPalette: ['#8B5CF6', '#38BDF8', '#F472B6', '#FBBF24', '#22C55E', '#A855F7'],
-};
+  }
+
+  return nextElement;
+}
+
+function applyThemeToShapeElement(element, themeConfig) {
+  const shapeDefaults = themeConfig?.shapeStyles || {};
+  const isLine = element.shapeType === 'line';
+  const nextShape = {
+    ...element,
+  };
+
+  if (!isLine) {
+    if (shapeDefaults.fill) {
+      nextShape.fill = shapeDefaults.fill;
+    }
+    if (shapeDefaults.shadow !== undefined) {
+      nextShape.shadow = shapeDefaults.shadow;
+    }
+  }
+
+  if (shapeDefaults.stroke) {
+    nextShape.stroke = shapeDefaults.stroke;
+  }
+  if (Number.isFinite(shapeDefaults.strokeWidth)) {
+    nextShape.strokeWidth = shapeDefaults.strokeWidth;
+  }
+
+  return nextShape;
+}
+
+function applyThemeToChartElement(element, themeConfig) {
+  const palette = (themeConfig?.chartPalette && themeConfig.chartPalette.length)
+    ? themeConfig.chartPalette
+    : DEFAULT_THEME.chartPalette;
+
+  const nextDatasets = (element.data?.datasets || []).map((dataset, datasetIndex) => {
+    const nextDataset = { ...dataset };
+    if (Array.isArray(dataset.segmentColors) && dataset.segmentColors.length) {
+      nextDataset.segmentColors = dataset.segmentColors.map((_, colorIndex) => palette[colorIndex % palette.length]);
+    } else {
+      nextDataset.color = palette[datasetIndex % palette.length];
+    }
+    return nextDataset;
+  });
+
+  return {
+    ...element,
+    data: {
+      ...(element.data || {}),
+      datasets: nextDatasets,
+    },
+  };
+}
+
+function applyThemeToSlide(slide, themeConfig) {
+  if (!slide) return slide;
+  const nextTheme = themeConfig || DEFAULT_THEME;
+
+  const nextElements = Array.isArray(slide.elements)
+    ? slide.elements.map((element) => {
+        if (!element || typeof element !== 'object') return element;
+        if (element.type === 'text') return applyThemeToTextElement(element, nextTheme);
+        if (element.type === 'shape') return applyThemeToShapeElement(element, nextTheme);
+        if (element.type === 'chart') return applyThemeToChartElement(element, nextTheme);
+        return { ...element };
+      })
+    : [];
+
+  return {
+    ...slide,
+    background: nextTheme.slideBackground,
+    elements: nextElements,
+  };
+}
+
+function applyThemeToPresentation(presentation, themeId) {
+  if (!presentation || typeof presentation !== 'object') return presentation;
+  const nextThemeId = THEMES_BY_ID[themeId] ? themeId : DEFAULT_THEME.id;
+  const themeConfig = resolveTheme(nextThemeId);
+  const slides = Array.isArray(presentation.slides)
+    ? presentation.slides.map((slide) => applyThemeToSlide(slide, themeConfig))
+    : [];
+
+  return {
+    ...presentation,
+    selectedThemeId: nextThemeId,
+    slides,
+  };
+}
 
 const DEFAULT_TEXT_PLACEHOLDERS = {
   title: 'Click to add title',
@@ -303,7 +561,8 @@ function FontDropdown({ value, onChange, title, trigger = 'inline' }) {
 function defaultPresentation() {
   return {
     name: '',
-    slides: [ makeSlide('title') ],
+    selectedThemeId: DEFAULT_THEME.id,
+    slides: [ makeSlide('title', DEFAULT_THEME.id) ],
   };
 }
 
@@ -390,8 +649,686 @@ function resolveSlideBackgroundFill(slide) {
   return '#ffffff';
 }
 
-function makeSlide(template = 'blank') {
-  const themeConfig = DEFAULT_THEME;
+function normalizeCssAngle(angle) {
+  const value = Number(angle);
+  if (!Number.isFinite(value)) return 0;
+  const normalized = value % 360;
+  return normalized < 0 ? normalized + 360 : normalized;
+}
+
+function cssAngleToCanvasVector(angle) {
+  const cssAngle = normalizeCssAngle(angle);
+  const theta = ((90 - cssAngle) * Math.PI) / 180;
+  const vx = Math.cos(theta);
+  const vy = -Math.sin(theta);
+  return { vx, vy };
+}
+
+function cssAngleToOpenXml(angle) {
+  const cssAngle = normalizeCssAngle(angle);
+  const converted = ((450 - cssAngle) % 360 + 360) % 360;
+  return Math.round(converted * 60000);
+}
+
+function splitGradientArgs(input) {
+  if (typeof input !== 'string') return [];
+  const parts = [];
+  let current = '';
+  let depth = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    const char = input[i];
+    if (char === '(') {
+      depth += 1;
+    } else if (char === ')') {
+      depth = Math.max(0, depth - 1);
+    }
+    if (char === ',' && depth === 0) {
+      if (current.trim()) {
+        parts.push(current.trim());
+      }
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  if (current.trim()) {
+    parts.push(current.trim());
+  }
+  return parts;
+}
+
+function parseLinearGradient(gradient) {
+  if (typeof gradient !== 'string') return null;
+  const match = gradient.match(/linear-gradient\((.+)\)/i);
+  if (!match) return null;
+  const parts = splitGradientArgs(match[1]);
+  if (!parts.length) return null;
+  let angle = 180;
+  const stops = [];
+  parts.forEach((part, index) => {
+    if (index === 0 && /deg/.test(part)) {
+      const angleMatch = part.match(/(-?\d+(?:\.\d+)?)deg/);
+      if (angleMatch) {
+        angle = parseFloat(angleMatch[1]);
+        return;
+      }
+    }
+    const colorMatch = part.match(/(rgba?\([^\)]+\)|#[0-9a-fA-F]{3,8}|[a-zA-Z]+)/);
+    if (!colorMatch) return;
+    const color = colorMatch[1];
+    const posMatch = part.match(/(\d+(?:\.\d+)?)%/);
+    const position = posMatch ? Math.min(100, Math.max(0, parseFloat(posMatch[1]))) / 100 : null;
+    stops.push({ color, position });
+  });
+  if (stops.length < 2) return null;
+  stops.forEach((stop, idx) => {
+    if (stop.position == null) {
+      stop.position = stops.length === 1 ? 0 : idx / (stops.length - 1);
+    }
+  });
+  return { angle, stops };
+}
+
+function renderGradientToDataUrl(gradient, width = 1920, height = 1080) {
+  const parsed = typeof gradient === 'string' ? parseLinearGradient(gradient) : null;
+  if (!parsed) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const { vx, vy } = cssAngleToCanvasVector(parsed.angle);
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const len = Math.abs(halfWidth * vx) + Math.abs(halfHeight * vy) || Math.max(halfWidth, halfHeight);
+  const x0 = halfWidth - vx * len;
+  const y0 = halfHeight - vy * len;
+  const x1 = halfWidth + vx * len;
+  const y1 = halfHeight + vy * len;
+  const canvasGradient = ctx.createLinearGradient(x0, y0, x1, y1);
+  parsed.stops.forEach((stop) => {
+    canvasGradient.addColorStop(stop.position, stop.color);
+  });
+  ctx.fillStyle = canvasGradient;
+  ctx.fillRect(0, 0, width, height);
+  try {
+    return canvas.toDataURL('image/png');
+  } catch (err) {
+    console.warn('Failed to encode gradient as image', err);
+    return null;
+  }
+}
+
+function resolveSlideBackgroundForExport(background) {
+  if (!background) {
+    return { type: 'color', value: '#ffffff' };
+  }
+
+  if (typeof background === 'string') {
+    if (background.includes('gradient')) {
+      const gradientImage = renderGradientToDataUrl(background);
+      if (gradientImage) {
+        return {
+          type: 'image',
+          value: gradientImage,
+          sizing: 'cover',
+          original: background,
+        };
+      }
+      const colorMatch = background.match(/#[0-9A-Fa-f]{3,6}|rgb\([^)]+\)/i);
+      if (colorMatch && colorMatch[0]) {
+        return {
+          type: 'color',
+          value: colorMatch[0],
+          original: background,
+        };
+      }
+      return {
+        type: 'color',
+        value: '#ffffff',
+        original: background,
+      };
+    }
+    return { type: 'color', value: background };
+  }
+
+  if (typeof background === 'object') {
+    if (background.image) {
+      return {
+        type: 'image',
+        value: background.image,
+        sizing: background.sizing || 'cover',
+      };
+    }
+    if (background.gradient) {
+      const gradientString = typeof background.gradient === 'string'
+        ? background.gradient
+        : background.gradient.css || null;
+      const gradientImage = renderGradientToDataUrl(gradientString);
+      if (gradientImage) {
+        return {
+          type: 'image',
+          value: gradientImage,
+          sizing: 'cover',
+          original: gradientString || background.gradient,
+        };
+      }
+      const colors = background.gradient.colors || [];
+      if (colors.length > 0 && colors[0].color) {
+        return {
+          type: 'color',
+          value: colors[0].color,
+          original: background.gradient,
+        };
+      }
+    }
+    if (background.color) {
+      return {
+        type: 'color',
+        value: background.color,
+      };
+    }
+  }
+
+  return { type: 'color', value: '#ffffff' };
+}
+
+const DEFAULT_OFFICE_ACCENTS = ['4F81BD', 'C0504D', '9BBB59', '8064A2', '4BACC6', 'F79646'];
+const PPT_THEME_REL_IDS = {
+  master: 'rIdPptThemeMaster1',
+  layout: 'rIdPptThemeLayout1',
+};
+
+function ensureThemeHex(value, fallback = '#FFFFFF') {
+  const normalized = normalizeColor(value || fallback, fallback);
+  if (typeof normalized === 'string' && /^[0-9A-F]{6}$/.test(normalized)) {
+    return normalized.toUpperCase();
+  }
+  return 'FFFFFF';
+}
+
+function adjustHex(hex, ratio = 0) {
+  const clampRatio = Math.max(-1, Math.min(1, ratio));
+  const channels = [0, 2, 4].map((idx) => parseInt(hex.slice(idx, idx + 2) || '00', 16));
+  const adjusted = channels.map((value) => {
+    if (clampRatio >= 0) {
+      return Math.round(value + (255 - value) * clampRatio);
+    }
+    return Math.round(value * (1 + clampRatio));
+  });
+  return adjusted
+    .map((val) => val.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
+}
+
+function getFirstFontFamily(fontValue, fallback = 'Calibri') {
+  if (typeof fontValue === 'string' && fontValue.trim()) {
+    return fontValue.split(',')[0].replace(/['"]/g, '').trim() || fallback;
+  }
+  return fallback;
+}
+
+function extractColorsFromBackground(background) {
+  if (!background) return [];
+  let source = '';
+  if (typeof background === 'string') {
+    source = background;
+  } else if (typeof background === 'object') {
+    if (background.color) source = background.color;
+    if (background.gradient?.colors?.length) {
+      return background.gradient.colors
+        .map((entry) => ensureThemeHex(entry.color, '#FFFFFF'))
+        .filter(Boolean);
+    }
+  }
+
+  if (typeof source !== 'string') return [];
+  const matches = source.match(/#[0-9A-Fa-f]{3,8}|rgba?\([^)]+\)/g);
+  if (!matches) return [];
+  return matches
+    .map((color) => ensureThemeHex(color, '#FFFFFF'))
+    .filter(Boolean);
+}
+
+function buildThemeColorSet(themeConfig = DEFAULT_THEME) {
+  const backgroundColors = extractColorsFromBackground(themeConfig?.slideBackground);
+  const baseBackground = backgroundColors[0] || ensureThemeHex('#FFFFFF', '#FFFFFF');
+  const textColor = ensureThemeHex(themeConfig?.textColor || '#111111', '#111111');
+  const primaryColor = ensureThemeHex(themeConfig?.primaryColor || textColor, '#1F497D');
+
+  const accentColors = Array.isArray(themeConfig?.accentColors)
+    ? themeConfig.accentColors.map((color, idx) => ensureThemeHex(color, DEFAULT_OFFICE_ACCENTS[idx] || '#FFFFFF'))
+    : [];
+
+  while (accentColors.length < 6) {
+    accentColors.push(DEFAULT_OFFICE_ACCENTS[accentColors.length]);
+  }
+
+  return {
+    name: themeConfig?.name || 'Custom Theme',
+    light1: baseBackground,
+    light2: adjustHex(baseBackground, 0.15),
+    dark1: textColor,
+    dark2: adjustHex(primaryColor, -0.2),
+    accent1: accentColors[0],
+    accent2: accentColors[1],
+    accent3: accentColors[2],
+    accent4: accentColors[3],
+    accent5: accentColors[4],
+    accent6: accentColors[5],
+    hlink: accentColors[0],
+    folHlink: accentColors[1],
+  };
+}
+
+function buildBackgroundFillXml(themeConfig, colors) {
+  const backgroundValue = themeConfig?.slideBackground;
+  const parsedGradient = typeof backgroundValue === 'string' && backgroundValue.includes('gradient')
+    ? parseLinearGradient(backgroundValue)
+    : null;
+  if (parsedGradient && parsedGradient.stops?.length >= 2) {
+    const stopNodes = parsedGradient.stops
+      .map((stop) => {
+        const colorHex = ensureThemeHex(stop.color, colors.light1 || 'FFFFFF');
+        const position = Math.round((stop.position ?? 0) * 100000);
+        return `<a:gs pos="${Math.max(0, Math.min(100000, position))}"><a:srgbClr val="${colorHex}"/></a:gs>`;
+      })
+      .join('');
+    const openXmlAngle = cssAngleToOpenXml(parsedGradient.angle);
+    return `<a:gradFill rotWithShape="1"><a:gsLst>${stopNodes}</a:gsLst><a:lin ang="${openXmlAngle}" scaled="1"/></a:gradFill>`;
+  }
+  const fallbackColor = ensureThemeHex(backgroundValue || colors.light1 || '#FFFFFF', colors.light1 || '#FFFFFF');
+  return `<a:solidFill><a:srgbClr val="${fallbackColor}"/></a:solidFill>`;
+}
+
+function buildPlaceholderTxBodyXml(colorHex, fontFamily, fontSize = 3200) {
+  const safeColor = ensureThemeHex(colorHex, 'FFFFFF');
+  const safeFont = fontFamily || 'Calibri';
+  return `<p:txBody>
+    <a:bodyPr/>
+    <a:lstStyle/>
+    <a:p>
+      <a:pPr>
+        <a:defRPr sz="${fontSize}">
+          <a:solidFill><a:srgbClr val="${safeColor}"/></a:solidFill>
+          <a:latin typeface="${safeFont}"/>
+        </a:defRPr>
+      </a:pPr>
+      <a:endParaRPr lang="en-US"/>
+    </a:p>
+  </p:txBody>`;
+}
+
+function buildDefaultTextStyleXml(themeConfig) {
+  const headingFont = getFirstFontFamily(themeConfig?.heading?.fontFamily, 'Calibri');
+  const bodyFont = getFirstFontFamily(themeConfig?.body?.fontFamily, 'Calibri');
+  const headingColor = ensureThemeHex(themeConfig?.heading?.color || '#111111', '111111');
+  const bodyColor = ensureThemeHex(themeConfig?.body?.color || '#333333', '333333');
+  return `<p:defaultTextStyle>
+    <a:defPPr>
+      <a:defRPr lang="en-US" sz="1800">
+        <a:solidFill><a:srgbClr val="${bodyColor}"/></a:solidFill>
+        <a:latin typeface="${bodyFont}"/>
+      </a:defRPr>
+    </a:defPPr>
+    <a:lvl1PPr marL="0" algn="l">
+      <a:defRPr sz="4400" b="1" kern="1200">
+        <a:solidFill><a:srgbClr val="${headingColor}"/></a:solidFill>
+        <a:latin typeface="${headingFont}"/>
+      </a:defRPr>
+    </a:lvl1PPr>
+    <a:lvl2PPr marL="457200" algn="l">
+      <a:defRPr sz="3200">
+        <a:solidFill><a:srgbClr val="${bodyColor}"/></a:solidFill>
+        <a:latin typeface="${bodyFont}"/>
+      </a:defRPr>
+    </a:lvl2PPr>
+  </p:defaultTextStyle>`;
+}
+
+function createThemeXml(themeConfig, colors) {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="${colors.name}">
+  <a:themeElements>
+    <a:clrScheme name="${colors.name}">
+      <a:dk1><a:srgbClr val="${colors.dark1}"/></a:dk1>
+      <a:lt1><a:srgbClr val="${colors.light1}"/></a:lt1>
+      <a:dk2><a:srgbClr val="${colors.dark2}"/></a:dk2>
+      <a:lt2><a:srgbClr val="${colors.light2}"/></a:lt2>
+      <a:accent1><a:srgbClr val="${colors.accent1}"/></a:accent1>
+      <a:accent2><a:srgbClr val="${colors.accent2}"/></a:accent2>
+      <a:accent3><a:srgbClr val="${colors.accent3}"/></a:accent3>
+      <a:accent4><a:srgbClr val="${colors.accent4}"/></a:accent4>
+      <a:accent5><a:srgbClr val="${colors.accent5}"/></a:accent5>
+      <a:accent6><a:srgbClr val="${colors.accent6}"/></a:accent6>
+      <a:hlink><a:srgbClr val="${colors.hlink}"/></a:hlink>
+      <a:folHlink><a:srgbClr val="${colors.folHlink}"/></a:folHlink>
+    </a:clrScheme>
+    <a:fontScheme name="${colors.name}">
+      <a:majorFont>
+        <a:latin typeface="${getFirstFontFamily(themeConfig?.heading?.fontFamily, 'Calibri')}"/>
+        <a:ea typeface=""/>
+        <a:cs typeface=""/>
+      </a:majorFont>
+      <a:minorFont>
+        <a:latin typeface="${getFirstFontFamily(themeConfig?.body?.fontFamily, 'Calibri')}"/>
+        <a:ea typeface=""/>
+        <a:cs typeface=""/>
+      </a:minorFont>
+    </a:fontScheme>
+    <a:fmtScheme name="${colors.name}">
+      <a:fillStyleLst>
+        <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
+        <a:gradFill rotWithShape="1">
+          <a:gsLst>
+            <a:gs pos="0"><a:schemeClr val="phClr"><a:lumMod val="110000"/><a:satMod val="105000"/><a:tint val="67000"/></a:schemeClr></a:gs>
+            <a:gs pos="50000"><a:schemeClr val="phClr"><a:lumMod val="105000"/><a:satMod val="103000"/><a:tint val="73000"/></a:schemeClr></a:gs>
+            <a:gs pos="100000"><a:schemeClr val="phClr"><a:lumMod val="105000"/><a:satMod val="109000"/><a:tint val="81000"/></a:schemeClr></a:gs>
+          </a:gsLst>
+          <a:lin ang="5400000" scaled="0"/>
+        </a:gradFill>
+        <a:gradFill rotWithShape="1">
+          <a:gsLst>
+            <a:gs pos="0"><a:schemeClr val="phClr"><a:satMod val="103000"/><a:lumMod val="102000"/><a:tint val="94000"/></a:schemeClr></a:gs>
+            <a:gs pos="50000"><a:schemeClr val="phClr"><a:satMod val="110000"/><a:lumMod val="100000"/><a:shade val="100000"/></a:schemeClr></a:gs>
+            <a:gs pos="100000"><a:schemeClr val="phClr"><a:lumMod val="99000"/><a:satMod val="120000"/><a:shade val="78000"/></a:schemeClr></a:gs>
+          </a:gsLst>
+          <a:lin ang="5400000" scaled="0"/>
+        </a:gradFill>
+      </a:fillStyleLst>
+      <a:lnStyleLst>
+        <a:ln w="6350" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>
+        <a:ln w="12700" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>
+        <a:ln w="19050" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>
+      </a:lnStyleLst>
+      <a:effectStyleLst>
+        <a:effectStyle><a:effectLst/></a:effectStyle>
+        <a:effectStyle><a:effectLst/></a:effectStyle>
+        <a:effectStyle>
+          <a:effectLst>
+            <a:outerShdw blurRad="57150" dist="19050" dir="5400000" algn="ctr" rotWithShape="0">
+              <a:srgbClr val="000000"><a:alpha val="63000"/></a:srgbClr>
+            </a:outerShdw>
+          </a:effectLst>
+        </a:effectStyle>
+      </a:effectStyleLst>
+      <a:bgFillStyleLst>
+        <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
+        <a:solidFill><a:schemeClr val="phClr"><a:tint val="95000"/><a:satMod val="170000"/></a:schemeClr></a:solidFill>
+        <a:gradFill rotWithShape="1">
+          <a:gsLst>
+            <a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="93000"/><a:satMod val="150000"/><a:shade val="98000"/><a:lumMod val="103000"/></a:schemeClr></a:gs>
+            <a:gs pos="50000"><a:schemeClr val="phClr"><a:tint val="98000"/><a:satMod val="130000"/><a:shade val="90000"/><a:lumMod val="103000"/></a:schemeClr></a:gs>
+            <a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="63000"/><a:satMod val="120000"/></a:schemeClr></a:gs>
+          </a:gsLst>
+          <a:lin ang="5400000" scaled="0"/>
+        </a:gradFill>
+      </a:bgFillStyleLst>
+    </a:fmtScheme>
+  </a:themeElements>
+  <a:objectDefaults/>
+  <a:extraClrSchemeLst/>
+</a:theme>`;
+}
+
+function createSlideMasterXml(themeConfig, colors) {
+  const backgroundFill = buildBackgroundFillXml(themeConfig, colors);
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:bg><p:bgPr>${backgroundFill}</p:bgPr></p:bg>
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+  <p:sldLayoutIdLst>
+    <p:sldLayoutId id="2147483649" r:id="rId1"/>
+  </p:sldLayoutIdLst>
+  <p:txStyles>
+    <p:titleStyle>
+      <a:lvl1PPr algn="l">
+        <a:defRPr sz="4400" b="1">
+          <a:latin typeface="${getFirstFontFamily(themeConfig?.heading?.fontFamily, 'Calibri')}"/>
+        </a:defRPr>
+      </a:lvl1PPr>
+    </p:titleStyle>
+    <p:bodyStyle>
+      <a:lvl1PPr marL="0" algn="l">
+        <a:defRPr sz="3200">
+          <a:latin typeface="${getFirstFontFamily(themeConfig?.body?.fontFamily, 'Calibri')}"/>
+        </a:defRPr>
+      </a:lvl1PPr>
+    </p:bodyStyle>
+  </p:txStyles>
+</p:sldMaster>`;
+}
+
+function createSlideLayoutXml(themeConfig) {
+  const headingFont = getFirstFontFamily(themeConfig?.heading?.fontFamily, 'Calibri');
+  const bodyFont = getFirstFontFamily(themeConfig?.body?.fontFamily, 'Calibri');
+  const headingColor = ensureThemeHex(themeConfig?.heading?.color || '#111111', 'FFFFFF');
+  const bodyColor = ensureThemeHex(themeConfig?.body?.color || '#333333', 'F8F8F8');
+  const titleTxBody = buildPlaceholderTxBodyXml(headingColor, headingFont, 4800);
+  const bodyTxBody = buildPlaceholderTxBodyXml(bodyColor, bodyFont, 3200);
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="title" preserve="1">
+  <p:cSld name="Title and Content">
+    <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="1" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="2" name="Title"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="title" idx="0"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="457200" y="274320"/>
+            <a:ext cx="8229600" cy="1021080"/>
+          </a:xfrm>
+        </p:spPr>
+        ${titleTxBody}
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr>
+          <p:cNvPr id="3" name="Content Placeholder"/>
+          <p:cNvSpPr>
+            <a:spLocks noGrp="1"/>
+          </p:cNvSpPr>
+          <p:nvPr>
+            <p:ph type="body" idx="1"/>
+          </p:nvPr>
+        </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="457200" y="1508760"/>
+            <a:ext cx="8229600" cy="4114800"/>
+          </a:xfrm>
+        </p:spPr>
+        ${bodyTxBody}
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMapOvr>
+    <a:masterClrMapping/>
+  </p:clrMapOvr>
+</p:sldLayout>`;
+}
+
+function createSlideMasterRelationshipsXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+</Relationships>`;
+}
+
+function createSlideLayoutRelationshipsXml() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
+</Relationships>`;
+}
+
+function buildOfficeThemePackage(themeConfig) {
+  const colors = buildThemeColorSet(themeConfig);
+  return {
+    colors,
+    files: {
+      'ppt/theme/theme1.xml': createThemeXml(themeConfig, colors),
+      'ppt/slideMasters/slideMaster1.xml': createSlideMasterXml(themeConfig, colors),
+      'ppt/slideMasters/_rels/slideMaster1.xml.rels': createSlideMasterRelationshipsXml(),
+      'ppt/slideLayouts/slideLayout1.xml': createSlideLayoutXml(themeConfig),
+      'ppt/slideLayouts/_rels/slideLayout1.xml.rels': createSlideLayoutRelationshipsXml(),
+    },
+  };
+}
+
+function defaultRelationshipsXml() {
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n</Relationships>';
+}
+
+function ensureOverrideEntry(xml, entry) {
+  if (xml.includes(`PartName="${entry.partName}"`)) {
+    return xml;
+  }
+  return xml.replace('</Types>', `  <Override PartName="${entry.partName}" ContentType="${entry.contentType}"/>\n</Types>`);
+}
+
+async function ensureContentTypes(zip) {
+  const ctPath = '[Content_Types].xml';
+  if (!zip.file(ctPath)) return;
+  let xml = await zip.file(ctPath).async('string');
+  const overrides = [
+    { partName: '/ppt/theme/theme1.xml', contentType: 'application/vnd.openxmlformats-officedocument.theme+xml' },
+    { partName: '/ppt/slideMasters/slideMaster1.xml', contentType: 'application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml' },
+    { partName: '/ppt/slideLayouts/slideLayout1.xml', contentType: 'application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml' },
+  ];
+  overrides.forEach((entry) => {
+    xml = ensureOverrideEntry(xml, entry);
+  });
+  zip.file(ctPath, xml);
+}
+
+function ensureRelationshipEntry(xml, rel) {
+  if (xml.includes(`Target="${rel.target}"`)) {
+    return xml;
+  }
+  return xml.replace('</Relationships>', `  <Relationship Id="${rel.id}" Type="${rel.type}" Target="${rel.target}"/>\n</Relationships>`);
+}
+
+async function ensurePresentationRelationships(zip) {
+  const relPath = 'ppt/_rels/presentation.xml.rels';
+  let relXml = zip.file(relPath) ? await zip.file(relPath).async('string') : defaultRelationshipsXml();
+  relXml = ensureRelationshipEntry(relXml, {
+    id: PPT_THEME_REL_IDS.master,
+    type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster',
+    target: 'slideMasters/slideMaster1.xml',
+  });
+  zip.file(relPath, relXml);
+}
+
+async function ensureSlideRelationships(zip) {
+  const slideRegex = /^ppt\/slides\/slide(\d+)\.xml$/;
+  const slideFiles = Object.keys(zip.files).filter((name) => slideRegex.test(name));
+  await Promise.all(
+    slideFiles.map(async (slidePath) => {
+      const match = slidePath.match(slideRegex);
+      if (!match) return;
+      const relPath = `ppt/slides/_rels/slide${match[1]}.xml.rels`;
+      let relXml = zip.file(relPath) ? await zip.file(relPath).async('string') : defaultRelationshipsXml();
+      relXml = ensureRelationshipEntry(relXml, {
+        id: PPT_THEME_REL_IDS.layout,
+        type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout',
+        target: '../slideLayouts/slideLayout1.xml',
+      });
+      zip.file(relPath, relXml);
+    })
+  );
+}
+
+function injectPresentationThemeMetadata(xml, themeConfig) {
+  let updatedXml = xml;
+  if (!updatedXml.includes('<p:sldMasterIdLst')) {
+    updatedXml = updatedXml.replace(
+      '<p:sldIdLst',
+      `<p:sldMasterIdLst>\n    <p:sldMasterId id="2147483648" r:id="${PPT_THEME_REL_IDS.master}"/>\n  </p:sldMasterIdLst>\n  <p:sldIdLst`
+    );
+  }
+  if (!updatedXml.includes('<p:defaultTextStyle')) {
+    updatedXml = updatedXml.replace('</p:presentation>', `  ${buildDefaultTextStyleXml(themeConfig)}\n</p:presentation>`);
+  }
+  if (!updatedXml.includes('<p:themeId>')) {
+    updatedXml = updatedXml.replace('</p:presentation>', '  <p:themeId>1</p:themeId>\n</p:presentation>');
+  }
+  return updatedXml;
+}
+
+async function ensurePresentationThemeMetadata(zip, themeConfig) {
+  const presPath = 'ppt/presentation.xml';
+  if (!zip.file(presPath)) return;
+  const xml = await zip.file(presPath).async('string');
+  const updated = injectPresentationThemeMetadata(xml, themeConfig);
+  zip.file(presPath, updated);
+}
+
+async function injectThemePackage(arrayBuffer, themeConfig = DEFAULT_THEME) {
+  const zipLib = typeof JSZip !== 'undefined' ? JSZip : window?.JSZip;
+  if (!zipLib) {
+    console.warn('JSZip not available. Skipping theme injection.');
+    return arrayBuffer;
+  }
+  try {
+    const zip = await zipLib.loadAsync(arrayBuffer);
+    const themePackage = buildOfficeThemePackage(themeConfig);
+    Object.entries(themePackage.files).forEach(([path, content]) => {
+      zip.file(path, content);
+    });
+
+    await ensureContentTypes(zip);
+    await ensurePresentationRelationships(zip);
+    await ensureSlideRelationships(zip);
+    await ensurePresentationThemeMetadata(zip, themeConfig);
+
+    return zip.generateAsync({ type: 'arraybuffer' });
+  } catch (error) {
+    console.warn('Failed to inject theme package. Returning original PPTX.', error);
+    return arrayBuffer;
+  }
+}
+
+function makeSlide(template = 'blank', themeId = DEFAULT_THEME.id) {
+  const themeConfig = resolveTheme(themeId);
   const slide = {
     id: uid('slide'),
     background: themeConfig.slideBackground,
@@ -734,13 +1671,16 @@ function normalizePresentation(raw, { fallbackId } = {}) {
 
   normalized.id = typeof normalized.id === 'string' ? normalized.id : (fallbackId || `ppt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`);
   normalized.name = typeof normalized.name === 'string' && normalized.name.trim() ? normalized.name : '';
-  const themeConfig = DEFAULT_THEME;
+  normalized.selectedThemeId = typeof normalized.selectedThemeId === 'string' && THEMES_BY_ID[normalized.selectedThemeId]
+    ? normalized.selectedThemeId
+    : DEFAULT_THEME.id;
+  const themeConfig = resolveTheme(normalized.selectedThemeId);
 
   if (!Array.isArray(normalized.slides) || normalized.slides.length === 0) {
-    normalized.slides = [makeSlide('title')];
+    normalized.slides = [makeSlide('title', normalized.selectedThemeId)];
   } else {
     normalized.slides = normalized.slides.map((slide) => {
-      if (!slide || typeof slide !== 'object') return makeSlide('blank');
+      if (!slide || typeof slide !== 'object') return makeSlide('blank', normalized.selectedThemeId);
       const elements = Array.isArray(slide.elements)
         ? slide.elements.map((el) => normalizeElement(el, themeConfig)).filter(Boolean)
         : [];
@@ -753,7 +1693,7 @@ function normalizePresentation(raw, { fallbackId } = {}) {
   }
 
   if (normalized.slides.length === 0) {
-    normalized.slides = [makeSlide('blank')];
+    normalized.slides = [makeSlide('blank', normalized.selectedThemeId)];
   }
 
   return normalized;
@@ -769,6 +1709,7 @@ function Toolbar({
   onDeleteElement,
   onSave,
   onLoad,
+  onExport,
   onUndo,
   onRedo,
   canUndo,
@@ -779,6 +1720,15 @@ function Toolbar({
   onChangeName,
   onChangeBackground,
   currentSlide,
+  onSelectTheme,
+  selectedThemeId,
+  currentTheme,
+  onZoomIn,
+  onZoomOut,
+  onZoomReset,
+  zoomLevel,
+  minZoom,
+  maxZoom,
 }) {
   const fileRef = useRef();
   const backgroundButtonRef = useRef();
@@ -787,7 +1737,85 @@ function Toolbar({
   const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
   const [showCustomColorPicker, setShowCustomColorPicker] = useState(false);
   const [showSlideLayouts, setShowSlideLayouts] = useState(false);
+  const [showThemeGallery, setShowThemeGallery] = useState(false);
   const layoutsButtonRef = useRef(null);
+  const layoutButtonRect = layoutsButtonRef.current?.getBoundingClientRect();
+  const themeButtonRef = useRef(null);
+  const themeButtonRect = themeButtonRef.current?.getBoundingClientRect();
+  const layoutDropdownPosition = useMemo(() => {
+    if (!layoutButtonRect) return null;
+
+    const dropdownWidth = 500;
+    const halfWidth = dropdownWidth / 2;
+    const edgePadding = 16;
+    const buttonCenter = layoutButtonRect.left + (layoutButtonRect.width / 2);
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : null;
+
+    if (!viewportWidth) {
+      return {
+        top: layoutButtonRect.bottom,
+        left: buttonCenter,
+      };
+    }
+
+    if (viewportWidth <= dropdownWidth + edgePadding * 2) {
+      return {
+        top: layoutButtonRect.bottom,
+        left: viewportWidth / 2,
+      };
+    }
+
+    const minCenter = halfWidth + edgePadding;
+    const maxCenter = viewportWidth - halfWidth - edgePadding;
+    const clampedCenter = Math.min(Math.max(buttonCenter, minCenter), maxCenter);
+
+    return {
+      top: layoutButtonRect.bottom,
+      left: clampedCenter,
+    };
+  }, [layoutButtonRect]);
+
+  const themeDropdownPosition = useMemo(() => {
+    if (!themeButtonRect) return null;
+
+    const dropdownWidth = 680;
+    const halfWidth = dropdownWidth / 2;
+    const edgePadding = 16;
+    const buttonCenter = themeButtonRect.left + (themeButtonRect.width / 2);
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : null;
+
+    const top = themeButtonRect.bottom + 8;
+
+    if (!viewportWidth) {
+      return {
+        top,
+        left: buttonCenter,
+      };
+    }
+
+    if (viewportWidth <= dropdownWidth + edgePadding * 2) {
+      return {
+        top,
+        left: viewportWidth / 2,
+      };
+    }
+
+    const minCenter = halfWidth + edgePadding;
+    const maxCenter = viewportWidth - halfWidth - edgePadding;
+    const clampedCenter = Math.min(Math.max(buttonCenter, minCenter), maxCenter);
+
+    return {
+      top,
+      left: clampedCenter,
+    };
+  }, [themeButtonRect]);
+
+  const safeZoomLevel = Number.isFinite(zoomLevel) ? zoomLevel : 1;
+  const minAllowedZoom = Number.isFinite(minZoom) ? minZoom : 0.25;
+  const maxAllowedZoom = Number.isFinite(maxZoom) ? maxZoom : 3;
+  const zoomDisplay = `${Math.round(safeZoomLevel * 100)}%`;
+  const isZoomOutDisabled = safeZoomLevel - minAllowedZoom <= 0.0001;
+  const isZoomInDisabled = maxAllowedZoom - safeZoomLevel <= 0.0001;
 
   const handleNameInputKeyDown = useCallback((e) => {
     if ((e.key === 'Enter' || e.key === 'NumpadEnter') && !e.shiftKey && !e.altKey && !e.metaKey) {
@@ -810,12 +1838,13 @@ function Toolbar({
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (!e.target.closest('.ribbon-btn') && !e.target.closest('.ribbon-dropdown-menu')) {
+      if (!e.target.closest('.ribbon-btn') && !e.target.closest('.ribbon-dropdown-menu') && !e.target.closest('.theme-gallery')) {
         setShowShapesMenu(false);
         setShowChartsMenu(false);
         setShowBackgroundMenu(false);
         setShowCustomColorPicker(false);
         setShowSlideLayouts(false);
+        setShowThemeGallery(false);
       }
     };
     document.addEventListener('click', handleClickOutside);
@@ -843,6 +1872,21 @@ function Toolbar({
           <div className="file-menu-content">
             <div className="file-menu-title">Save</div>
             <div className="file-menu-desc">Download as PowerPoint (.pptx)</div>
+          </div>
+        </div>
+        <div className="file-menu-item" onClick={onExport} title="Export presentation" tabIndex={0}
+             onKeyDown={(e) => e.key === 'Enter' && onExport()}>
+          <div className="file-menu-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 4h16a2 2 0 0 1 2 2v6" />
+              <path d="M16 14l-4 4-4-4" />
+              <path d="M12 10v8" />
+              <path d="M4 18h16" />
+            </svg>
+          </div>
+          <div className="file-menu-content">
+            <div className="file-menu-title">Export</div>
+            <div className="file-menu-desc">Download themed PowerPoint</div>
           </div>
         </div>
         <div className="file-menu-item" onClick={onLoad} title="Open saved presentation" tabIndex={0} 
@@ -904,6 +1948,62 @@ function Toolbar({
     </div>
   );
 
+  const renderThemeCard = (theme) => {
+    const isSelected = theme.id === selectedThemeId;
+    const sampleAccent = Array.isArray(theme.accentColors) ? theme.accentColors.slice(0, 5) : [];
+    const headingFont = theme.heading?.fontFamily || 'Segoe UI';
+    const bodyFont = theme.body?.fontFamily || 'Segoe UI';
+
+    return (
+      <button
+        key={theme.id}
+        type="button"
+        className={`theme-card${isSelected ? ' theme-card--selected' : ''}`}
+        onClick={() => {
+          if (onSelectTheme) onSelectTheme(theme.id);
+          setShowThemeGallery(false);
+        }}
+      >
+        <div className="theme-card__preview">
+          <div
+            className="theme-card__slide"
+            style={{
+              background: theme.slideBackground,
+            }}
+          >
+            <div
+              className="theme-card__title"
+              style={{
+                fontFamily: headingFont,
+                color: theme.heading?.color || theme.textColor,
+              }}
+            >
+              {theme.name}
+            </div>
+            <div
+              className="theme-card__subtitle"
+              style={{
+                fontFamily: bodyFont,
+                color: theme.body?.color || theme.textColor,
+              }}
+            >
+              Presentation Theme
+            </div>
+            <div className="theme-card__accents">
+              {sampleAccent.map((color) => (
+                <span
+                  key={color}
+                  className="theme-card__accent"
+                  style={{ background: color }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </button>
+    );
+  };
+
   const resolvedBackground = (() => {
     const slideBg = currentSlide?.background;
     if (typeof slideBg === 'string') {
@@ -929,7 +2029,7 @@ function Toolbar({
   return (
     <div className="toolbar-compact">
       <div className="toolbar-content ribbon-layout" id="toolbar-content">
-          {/* File Operations */}
+          {/* File */}
           <div className="ribbon-section">
             <span className="ribbon-section-label">File</span>
             <div className="ribbon-section-content">
@@ -939,6 +2039,23 @@ function Toolbar({
                   <polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/>
                 </svg>
               </button>
+              <button onClick={onExport} title="Export (.pptx)" className="ribbon-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 4h16a2 2 0 0 1 2 2v6" />
+                  <path d="M16 14l-4 4-4-4" />
+                  <path d="M12 10v8" />
+                  <path d="M4 18h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="ribbon-divider"></div>
+
+          {/* Edit */}
+          <div className="ribbon-section">
+            <span className="ribbon-section-label">Edit</span>
+            <div className="ribbon-section-content">
               <button onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" className="ribbon-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
@@ -947,6 +2064,48 @@ function Toolbar({
               <button onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)" className="ribbon-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="ribbon-divider"></div>
+
+          {/* View / Zoom */}
+          <div className="ribbon-section">
+            <span className="ribbon-section-label">Zoom</span>
+            <div className="ribbon-section-content ribbon-zoom-controls">
+              <button
+                type="button"
+                className="ribbon-btn"
+                onClick={() => onZoomOut?.()}
+                disabled={isZoomOutDisabled}
+                title="Zoom out"
+                aria-label="Zoom out"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M4 8h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="ribbon-btn ribbon-btn--label"
+                onClick={() => onZoomReset?.()}
+                title="Reset zoom"
+                aria-label="Reset zoom"
+              >
+                {zoomDisplay}
+              </button>
+              <button
+                type="button"
+                className="ribbon-btn"
+                onClick={() => onZoomIn?.()}
+                disabled={isZoomInDisabled}
+                title="Zoom in"
+                aria-label="Zoom in"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M8 4v8M4 8h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </button>
             </div>
@@ -980,16 +2139,56 @@ function Toolbar({
                     <path d="M6 9L2 5h8z"/>
                   </svg>
                 </button>
+                {showThemeGallery && (
+                  <div
+                    className="theme-gallery"
+                    style={{
+                      top: themeDropdownPosition ? `${themeDropdownPosition.top}px` : '120px',
+                      left: themeDropdownPosition ? `${themeDropdownPosition.left}px` : '50%',
+                      transform: 'translateX(-50%)',
+                    }}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="theme-gallery__header">
+                      <div>
+                        <h3>Themes</h3>
+                      </div>
+                      <button
+                        type="button"
+                        className="theme-gallery__close"
+                        aria-label="Close theme gallery"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setShowThemeGallery(false);
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="theme-gallery__grid">
+                      {THEMES.map(renderThemeCard)}
+                    </div>
+                  </div>
+                )}
                 {showSlideLayouts && (
                   <div 
-                    className="ribbon-dropdown-menu"
+                    className="slide-layouts-dropdown ribbon-dropdown-menu"
                     style={{
                       width: '500px',
                       padding: '16px',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
                       maxHeight: '60vh',
-                      overflowY: 'auto'
+                      overflowY: 'auto',
+                      transform: 'translateX(-50%)',
+                      ...(layoutDropdownPosition
+                        ? {
+                            top: `${layoutDropdownPosition.top}px`,
+                            left: `${layoutDropdownPosition.left}px`
+                          }
+                        : {
+                            left: '50%',
+                            top: '72px'
+                          })
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -1260,7 +2459,7 @@ function Toolbar({
 
           <div className="ribbon-divider"></div>
 
-          {/* Insert Elements */}
+          {/* Insert */}
           <div className="ribbon-section">
             <span className="ribbon-section-label">Insert</span>
             <div className="ribbon-section-content">
@@ -1414,6 +2613,75 @@ function Toolbar({
 
           <div className="ribbon-divider"></div>
 
+          {/* Themes */}
+          <div className="ribbon-section ribbon-section--design">
+            <span className="ribbon-section-label">Themes</span>
+            <div className="ribbon-section-content ribbon-section-content--design">
+              <button
+                ref={themeButtonRef}
+                type="button"
+                className={`ribbon-btn theme-picker-btn${showThemeGallery ? ' open' : ''}`}
+                title="Browse themes"
+                aria-expanded={showThemeGallery}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setShowThemeGallery((prev) => !prev);
+                  setShowSlideLayouts(false);
+                  setShowShapesMenu(false);
+                  setShowChartsMenu(false);
+                  setShowBackgroundMenu(false);
+                  setShowCustomColorPicker(false);
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M4 7h16M4 12h16M4 17h10" />
+                  <circle cx="7" cy="12" r="1.5" />
+                  <circle cx="12" cy="9" r="1.5" />
+                  <circle cx="16.5" cy="12.5" r="1.3" />
+                </svg>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+                  <path d="M6 9L2 5h8z" />
+                </svg>
+              </button>
+            </div>
+            {showThemeGallery && (
+              <div
+                className="theme-gallery"
+                style={{
+                  top: themeDropdownPosition ? `${themeDropdownPosition.top}px` : '120px',
+                  left: themeDropdownPosition ? `${themeDropdownPosition.left}px` : '50%',
+                  transform: 'translateX(-50%)',
+                }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="theme-gallery__header">
+                  <div>
+                    <h3>Themes</h3>
+                    <p></p>
+                  </div>
+                  <button
+                    type="button"
+                    className="theme-gallery__close"
+                    aria-label="Close theme gallery"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setShowThemeGallery(false);
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="theme-gallery__grid">
+                  {THEMES.map(renderThemeCard)}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="ribbon-divider"></div>
+
           {/* Presentation Name & Present */}
           <div className="ribbon-section ribbon-section-presentation">
             <div className="ribbon-section-content ribbon-presentation-content">
@@ -1427,7 +2695,7 @@ function Toolbar({
               <button
                 className="present-btn-ribbon"
                 onClick={onPresent}
-                title={isPresenting ? 'Exit fullscreen (Esc)' : 'Present fullscreen (F5)'}
+                title={isPresenting ? 'Exit fullscreen (Esc)' : 'Present fullscreen'}
                 aria-label={isPresenting ? 'Exit fullscreen' : 'Present fullscreen'}
                 aria-pressed={isPresenting || false}
               >
@@ -1764,6 +3032,12 @@ function ChartElement({ element, scale = 1 }) {
 
     const data = { labels, datasets };
 
+    const baseFont = {
+      family: 'Inter, "Segoe UI", sans-serif',
+      size: 10,
+      weight: '500',
+    };
+
     const options = {
       responsive: false,
       maintainAspectRatio: false,
@@ -1774,20 +3048,40 @@ function ChartElement({ element, scale = 1 }) {
       plugins: {
         legend: {
           display: datasets.length > 1 || chartType === 'pie',
-          position: 'top'
-        }
+          position: 'top',
+          labels: {
+            font: baseFont,
+            color: '#1f2937',
+            boxWidth: 10,
+            boxHeight: 10,
+          },
+        },
+        tooltip: {
+          titleFont: baseFont,
+          bodyFont: baseFont,
+        },
       },
       scales: chartType !== 'pie' ? {
         y: {
           beginAtZero: true,
           ticks: {
-            precision: 0
-          }
+            precision: 0,
+            font: baseFont,
+            color: '#475569',
+          },
+          grid: {
+            color: 'rgba(148, 163, 184, 0.35)',
+          },
         },
         x: {
           ticks: {
-            maxRotation: 0
-          }
+            maxRotation: 0,
+            font: baseFont,
+            color: '#475569',
+          },
+          grid: {
+            color: 'rgba(148, 163, 184, 0.25)',
+          },
         }
       } : {}
     };
@@ -2523,6 +3817,9 @@ const CANVAS_BASE_HEIGHT = 520;
 const PRESENTATION_FRAME_PADDING = 64;
 const PX_PER_INCH = 96;
 const AUTOPLAY_INTERVAL_MS = 5000;
+const MIN_CANVAS_ZOOM = 0.5;
+const MAX_CANVAS_ZOOM = 2;
+const CANVAS_ZOOM_STEP = 0.1;
 
 function parseDimension(value, fallback = 0) {
   if (typeof value === 'number') {
@@ -2903,9 +4200,11 @@ function measureTextHeightForWidth(content, styles, width) {
   return Math.max(minHeight, Math.ceil(measured));
 }
 
-function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChangeText, onDragStart, onResizeStart, isPresenting = false }) {
+function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChangeText, onDragStart, onResizeStart, isPresenting = false, zoom = 1 }) {
   const wrapperRef = useRef(null);
-  const [scale, setScale] = useState(1);
+  const [fitScale, setFitScale] = useState(1);
+  const safeZoom = Number.isFinite(zoom) ? zoom : 1;
+  const effectiveScale = Math.min(Math.max(fitScale * safeZoom, 0.25), 3);
   const textareaRefs = useRef({});
 
   const handleTextKeyDown = (event, element) => {
@@ -3003,8 +4302,9 @@ function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChang
       if (!clientWidth || !clientHeight) return;
       const widthScale = clientWidth / CANVAS_BASE_WIDTH;
       const heightScale = clientHeight / CANVAS_BASE_HEIGHT;
-      const nextScale = Math.max(Math.min(widthScale, heightScale), 0.1);
-      setScale(nextScale);
+      const fitted = Math.min(widthScale, heightScale, 1);
+      const nextScale = Math.max(fitted, 0.1);
+      setFitScale(nextScale);
     };
     updateScale();
     window.addEventListener('resize', updateScale);
@@ -3020,6 +4320,13 @@ function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChang
       if (resizeObserver) resizeObserver.disconnect();
     };
   }, []);
+
+  const viewportStyle = {
+    width: CANVAS_BASE_WIDTH,
+    height: CANVAS_BASE_HEIGHT,
+    transform: `scale(${effectiveScale})`,
+    transformOrigin: 'center center',
+  };
 
   const canvasStyle = {
     background: slide.background,
@@ -3041,8 +4348,8 @@ function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChang
     if (typeof onSelect === 'function') {
       onSelect(element.id);
     }
-    onDragStart(element.id, event, scale);
-  }, [isPresenting, onDragStart, onSelect, scale]);
+    onDragStart(element.id, event, effectiveScale);
+  }, [isPresenting, onDragStart, onSelect, effectiveScale]);
 
   const handleCanvasPointerDown = useCallback((event) => {
     if (isPresenting) return;
@@ -3055,8 +4362,9 @@ function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChang
 
   return (
     <div className="canvas-wrapper" ref={wrapperRef}>
-      <div className="canvas" style={canvasStyle} onPointerDown={handleCanvasPointerDown}>
-        {slide.elements.map(el => {
+      <div className="canvas-viewport" style={viewportStyle}>
+        <div className="canvas" style={canvasStyle} onPointerDown={handleCanvasPointerDown}>
+          {slide.elements.map(el => {
           const isDragging = draggingElementId === el.id;
           const style = {
             left: el.x,
@@ -3174,7 +4482,7 @@ function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChang
                   }}
                 />
                 {selected && !isPresenting && (
-                  <ResizeHandles onResizeStart={(dir, evt, s) => onResizeStart(el.id, dir, evt, s)} scale={scale} />
+                  <ResizeHandles onResizeStart={(dir, evt, s) => onResizeStart(el.id, dir, evt, s)} scale={effectiveScale} />
                 )}
               </div>
             );
@@ -3189,7 +4497,7 @@ function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChang
               >
                 <img src={el.src} alt="" draggable={false} style={{width: '100%', height: '100%', objectFit: 'contain'}} />
                 {selected && !isPresenting && (
-                  <ResizeHandles onResizeStart={(dir, evt, s) => onResizeStart(el.id, dir, evt, s)} scale={scale} />
+                  <ResizeHandles onResizeStart={(dir, evt, s) => onResizeStart(el.id, dir, evt, s)} scale={effectiveScale} />
                 )}
               </div>
             );
@@ -3204,7 +4512,7 @@ function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChang
               >
                 <ChartElement element={el} scale={1} />
                 {selected && !isPresenting && (
-                  <ResizeHandles onResizeStart={(dir, evt, s) => onResizeStart(el.id, dir, evt, s)} scale={scale} />
+                  <ResizeHandles onResizeStart={(dir, evt, s) => onResizeStart(el.id, dir, evt, s)} scale={effectiveScale} />
                 )}
               </div>
             );
@@ -3218,17 +4526,18 @@ function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChang
               >
                 <ShapeElement element={el} scale={1} />
                 {selected && !isPresenting && (
-                  <ResizeHandles onResizeStart={(dir, evt, s) => onResizeStart(el.id, dir, evt, s)} scale={scale} />
+                  <ResizeHandles onResizeStart={(dir, evt, s) => onResizeStart(el.id, dir, evt, s)} scale={effectiveScale} />
                 )}
               </div>
             );
           }
-          return null;
-        })}
-        <div
-          className="canvas-overlay"
-          onClick={isPresenting ? undefined : () => onSelect(null)}
-        />
+            return null;
+          })}
+          <div
+            className="canvas-overlay"
+            onClick={isPresenting ? undefined : () => onSelect(null)}
+          />
+        </div>
       </div>
     </div>
   );
@@ -3632,12 +4941,15 @@ function App() {
   const [presentIndex, setPresentIndex] = useState(0);
   const [isAutoplaying, setIsAutoplaying] = useState(false);
   const [showLayouts, setShowLayouts] = useState(false);
+  const [canvasZoom, setCanvasZoom] = useState(1);
   
   const selectedSlide = presentation.slides[currentSlide];
   const selectedElement = selectedSlide?.elements.find(e=>e.id===selectedElementId) || null;
+  const currentTheme = resolveTheme(presentation.selectedThemeId);
 
   const handleAddSlideWithLayout = useCallback((layoutId) => {
-    const newSlide = makeSlide(layoutId);
+    const themeId = presentation.selectedThemeId || DEFAULT_THEME.id;
+    const newSlide = makeSlide(layoutId, themeId);
     setPresentation(prev => {
       const newSlides = [...prev.slides];
       newSlides.splice(currentSlide + 1, 0, newSlide);
@@ -3775,11 +5087,20 @@ function App() {
     const doc = document;
     const exitFullscreen = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
     exitFullscreen?.call(doc);
+    setIsPresenting(false);
     setIsAutoplaying(false);
-    if (presentation.slides[presentIndex]) {
-      setCurrentSlide(presentIndex);
-    }
-  }, [presentation.slides, presentIndex]);
+  }, []);
+
+  const handleZoomStep = useCallback((delta) => {
+    setCanvasZoom((prev) => {
+      const next = Math.round((prev + delta) * 100) / 100;
+      return Math.min(MAX_CANVAS_ZOOM, Math.max(MIN_CANVAS_ZOOM, next));
+    });
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setCanvasZoom(1);
+  }, []);
 
   const goNextSlide = useCallback(() => {
     const lastIndex = presentation.slides.length - 1;
@@ -4108,7 +5429,8 @@ function App() {
 
   function onAddSlide(template) {
     updatePresentation(p => {
-      p.slides.splice(currentSlide+1, 0, makeSlide(template));
+      const themeId = p.selectedThemeId || DEFAULT_THEME.id;
+      p.slides.splice(currentSlide+1, 0, makeSlide(template, themeId));
       setCurrentSlide(currentSlide+1);
       setSelectedElementId(null);
     });
@@ -4148,7 +5470,7 @@ function App() {
     const centeredY = Math.round((CANVAS_BASE_HEIGHT - defaultHeight) / 2);
     let newElementId = null;
     updatePresentation(p => {
-      const themeConfig = DEFAULT_THEME;
+      const themeConfig = resolveTheme(p.selectedThemeId);
       const element = createThemedTextElement({
         themeConfig,
         variant: 'body',
@@ -4178,7 +5500,7 @@ function App() {
   function onAddChart(chartType) {
     const newElementId = uid('el');
     updatePresentation(p => {
-      const themeConfig = DEFAULT_THEME;
+      const themeConfig = resolveTheme(p.selectedThemeId);
       const palette = (themeConfig.chartPalette && themeConfig.chartPalette.length)
         ? themeConfig.chartPalette
         : DEFAULT_CHART_COLORS;
@@ -4210,7 +5532,7 @@ function App() {
   function onAddShape(shapeType) {
     const newElementId = uid('el');
     updatePresentation(p => {
-      const themeConfig = DEFAULT_THEME;
+      const themeConfig = resolveTheme(p.selectedThemeId);
       const shapeDefaults = themeConfig.shapeStyles || {};
       const fillValue = shapeType === 'line'
         ? 'transparent'
@@ -4595,22 +5917,34 @@ function App() {
     }
   }
 
-  function onExport() {
+  async function onExport() {
     try {
       const PptxConstructor = resolvePptxGen();
       if (typeof PptxConstructor !== 'function') {
         alert('Export Failed: PptxGenJS library is not loaded. Please check your internet connection and try again.');
         return;
       }
+
       const pptx = ensureChartEnum(new PptxConstructor(), PptxConstructor);
       pptx.layout = 'LAYOUT_WIDE';
       pptx.author = 'PPT Maker';
+      pptx.company = 'PPT Maker';
+      pptx.subject = 'Presentation created with PPT Maker';
       pptx.title = presentation.name || 'Presentation';
-      
-      presentation.slides.forEach(sl => {
+      pptx.revision = '1.0';
+
+      const themeConfig = resolveTheme(presentation.selectedThemeId);
+
+      presentation.slides.forEach((sl) => {
         const slide = pptx.addSlide();
-        slide.background = { color: normalizeColor(sl.background || '#ffffff', '#ffffff') };
-        sl.elements.forEach(el => {
+        const backgroundFill = resolveSlideBackgroundForExport(sl.background || '#ffffff');
+        if (backgroundFill.type === 'image') {
+          slide.background = { data: backgroundFill.value, sizing: backgroundFill.sizing || 'cover' };
+        } else {
+          slide.background = { color: normalizeColor(backgroundFill.value, '#ffffff') };
+        }
+
+        sl.elements.forEach((el) => {
           try {
             if (el.type === 'text') {
               const textOptions = {
@@ -4620,12 +5954,12 @@ function App() {
                 h: pxToIn(el.h || PX_PER_INCH * 2),
                 fontSize: el.styles?.fontSize || 18,
                 color: normalizeColor(el.styles?.color || '#111111', '#111111'),
-                bold: el.styles?.fontWeight==='bold',
-                italic: el.styles?.fontStyle==='italic',
-                underline: el.styles?.textDecoration==='underline' ? { style: 'sng' } : false,
+                bold: el.styles?.fontWeight === 'bold',
+                italic: el.styles?.fontStyle === 'italic',
+                underline: el.styles?.textDecoration === 'underline' ? { style: 'sng' } : false,
                 align: el.styles?.textAlign || 'left',
                 fontFace: el.styles?.fontFamily || 'Arial',
-                valign: 'top'
+                valign: 'top',
               };
               slide.addText(el.content || '', textOptions);
             } else if (el.type === 'image') {
@@ -4642,13 +5976,13 @@ function App() {
                 buildBarLineChart(slide, pptx, el, labels, datasets);
               }
             } else if (el.type === 'shape') {
-              const opts = { 
-                x: pxToIn(el.x || 0), 
-                y: pxToIn(el.y || 0), 
-                w: pxToIn(el.w || PX_PER_INCH), 
-                h: pxToIn(el.h || PX_PER_INCH), 
-                fill: { color: normalizeColor(el.fill||'#4e79a7', '#4e79a7') }, 
-                line: { color: normalizeColor(el.stroke||'#000', '#000000'), width: (el.strokeWidth||2)/12 } 
+              const opts = {
+                x: pxToIn(el.x || 0),
+                y: pxToIn(el.y || 0),
+                w: pxToIn(el.w || PX_PER_INCH),
+                h: pxToIn(el.h || PX_PER_INCH),
+                fill: { color: normalizeColor(el.fill || '#4e79a7', '#4e79a7') },
+                line: { color: normalizeColor(el.stroke || '#000', '#000000'), width: (el.strokeWidth || 2) / 12 },
               };
               if (el.shapeType === 'rect') slide.addShape(pptx.shapes.RECTANGLE, opts);
               else if (el.shapeType === 'square') {
@@ -4657,12 +5991,12 @@ function App() {
               } else if (el.shapeType === 'circle') slide.addShape(pptx.shapes.OVAL, opts);
               else if (el.shapeType === 'triangle') slide.addShape(pptx.shapes.RIGHT_TRIANGLE, opts);
               else if (el.shapeType === 'line') {
-                slide.addShape(pptx.shapes.LINE, { 
-                  x: pxToIn(el.x || 0), 
-                  y: pxToIn(el.y || 0), 
-                  w: pxToIn(el.w || 0), 
+                slide.addShape(pptx.shapes.LINE, {
+                  x: pxToIn(el.x || 0),
+                  y: pxToIn(el.y || 0),
+                  w: pxToIn(el.w || 0),
                   h: 0,
-                  line: { color: normalizeColor(el.stroke||'#000', '#000000'), width: (el.strokeWidth||2)/12 } 
+                  line: { color: normalizeColor(el.stroke || '#000', '#000000'), width: (el.strokeWidth || 2) / 12 },
                 });
               }
             }
@@ -4671,8 +6005,22 @@ function App() {
           }
         });
       });
-      pptx.writeFile({ fileName: (presentation.name || 'Presentation') + '.pptx' });
-      alert('Presentation exported successfully!');
+
+      const baseBuffer = await pptx.write({ outputType: 'arraybuffer' });
+      const themedBuffer = await injectThemePackage(baseBuffer, themeConfig);
+      const blob = new Blob([themedBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${(presentation.name || 'Presentation').replace(/[^a-z0-9\-_]/gi, '_')}.pptx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      alert('Presentation exported successfully! PowerPoint can now detect the embedded theme.');
     } catch (err) {
       console.error('Export error:', err);
       alert('Export failed: ' + err.message);
@@ -4704,6 +6052,21 @@ function App() {
         canRedo={historyIndex < history.length - 1}
         onChangeBackground={onChangeBackground}
         currentSlide={selectedSlide}
+        onSelectTheme={(themeId) => {
+          if (!themeId || themeId === presentation.selectedThemeId) return;
+          updatePresentation((draft) => {
+            const next = applyThemeToPresentation(draft, themeId);
+            Object.assign(draft, next);
+          });
+        }}
+        selectedThemeId={presentation.selectedThemeId}
+        currentTheme={currentTheme}
+        onZoomIn={() => handleZoomStep(CANVAS_ZOOM_STEP)}
+        onZoomOut={() => handleZoomStep(-CANVAS_ZOOM_STEP)}
+        onZoomReset={handleZoomReset}
+        zoomLevel={canvasZoom}
+        minZoom={MIN_CANVAS_ZOOM}
+        maxZoom={MAX_CANVAS_ZOOM}
       />
 
       <div className="main">
@@ -4782,6 +6145,7 @@ function App() {
               onDragStart={onDragStart}
               onResizeStart={onResizeStart}
               isPresenting={isPresenting}
+              zoom={canvasZoom}
             />
           )}
           {isPresenting && presentation.slides.length > 0 && (
@@ -4813,7 +6177,7 @@ function App() {
                 disabled={presentation.slides.length <= 1}
                 aria-pressed={isAutoplaying}
                 aria-label={isAutoplaying ? 'Pause autoplay' : 'Play slides automatically'}
-                title={isAutoplaying ? 'Pause autoplay (K)' : 'Play slides automatically (K)'}
+                title={isAutoplaying ? 'Pause autoplay (K)' : 'Play/Pause'}
               >
                 {isAutoplaying ? (
                   <svg

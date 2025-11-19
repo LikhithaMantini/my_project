@@ -96,16 +96,7 @@ body { margin: 0; font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Seg
   background: rgba(255, 255, 255, 0.6);
 }
 
-.ribbon-section--design {
-  background: linear-gradient(140deg, rgba(59, 130, 246, 0.18), rgba(99, 102, 241, 0.18));
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  border-radius: 14px;
-  padding: 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 20px 30px rgba(59, 130, 246, 0.15);
-}
-
 .ribbon-section--design .ribbon-section-label {
-  color: #1e3a8a;
   letter-spacing: 0.4px;
 }
 
@@ -230,6 +221,205 @@ body { margin: 0; font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Seg
 
 .ribbon-btn span {
   white-space: nowrap;
+}
+
+.theme-picker-btn {
+  gap: 2px;
+}
+
+.theme-picker-btn.open {
+  border-color: var(--color-purple);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+.theme-picker-btn svg {
+  color: var(--color-purple-dark);
+}
+
+.ribbon-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ribbon-zoom-controls .ribbon-btn {
+  min-width: 32px;
+  padding: 0 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ribbon-zoom-controls .ribbon-btn--label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.theme-gallery {
+  position: fixed;
+  width: clamp(320px, 70vw, 640px);
+  max-height: min(70vh, 520px);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(99, 102, 241, 0.24);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(79, 70, 229, 0.22);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 16px 18px 20px;
+  z-index: 10020;
+  animation: dropdownFadeIn 0.22s ease-out;
+}
+
+.theme-gallery__header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.theme-gallery__header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.theme-gallery__header p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: rgba(15, 23, 42, 0.6);
+}
+
+.theme-gallery__close {
+  border: none;
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.6);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.18);
+}
+
+.theme-gallery__close:hover {
+  background: rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px) scale(1.03);
+}
+
+.theme-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  max-height: calc(100% - 70px);
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 16px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  text-align: left;
+  gap: 10px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+}
+
+.theme-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.theme-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(79, 70, 229, 0.4);
+  box-shadow: 0 18px 32px rgba(79, 70, 229, 0.18);
+}
+
+.theme-card--selected::after {
+  border-color: rgba(56, 189, 248, 0.8);
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.35);
+}
+
+.theme-card__preview {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.theme-card__slide {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px;
+  gap: 6px;
+  border-radius: inherit;
+}
+
+.theme-card__title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.theme-card__subtitle {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.theme-card__accents {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.theme-card__accent {
+  width: 16px;
+  height: 4px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+}
+
+.theme-card__selected {
+  background: rgba(56, 189, 248, 0.18);
+  color: #0ea5e9;
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 9px;
+}
+
+.theme-gallery__grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.theme-gallery__grid::-webkit-scrollbar-thumb {
+  background: rgba(79, 70, 229, 0.35);
+  border-radius: 3px;
 }
 
 /* Ribbon Dropdown Menus */
@@ -706,7 +896,7 @@ select:focus { outline: none; border-color: var(--color-purple); box-shadow: 0 0
   transform: translateY(-1px) scale(1.02);
 }
 
-.stage { flex: 1; display: flex; justify-content: center; align-items: stretch; background: linear-gradient(135deg, rgba(243, 232, 255, 0.2) 0%, rgba(224, 242, 254, 0.2) 50%, rgba(252, 231, 243, 0.2) 100%); padding: 24px; overflow: auto; min-height: 0; border-radius: 0; }
+.stage { position: relative; flex: 1; display: flex; justify-content: center; align-items: stretch; background: linear-gradient(135deg, rgba(243, 232, 255, 0.2) 0%, rgba(224, 242, 254, 0.2) 50%, rgba(252, 231, 243, 0.2) 100%); padding: 24px; overflow: auto; min-height: 0; border-radius: 0; }
 .stage:fullscreen,
 .stage:-webkit-full-screen,
 .stage:-moz-full-screen {
@@ -791,7 +981,8 @@ select:focus { outline: none; border-color: var(--color-purple); box-shadow: 0 0
   font-weight: 600;
   color: #2d2753;
 }
-.canvas-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+.canvas-wrapper { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+.canvas-viewport { position: relative; display: flex; align-items: center; justify-content: center; transition: transform 0.2s ease; will-change: transform; }
 .canvas {
   position: relative;
   background: #fff;
@@ -840,10 +1031,6 @@ select:focus { outline: none; border-color: var(--color-purple); box-shadow: 0 0
 
 .floating-toolbar {
   --toolbar-control-height: 32px;
-}
-
-
-.floating-text-toolbar {
   position: absolute;
   z-index: 90;
 }
