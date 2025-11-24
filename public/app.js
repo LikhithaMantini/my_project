@@ -1391,7 +1391,7 @@ function makeSlide(template = 'blank', themeId = DEFAULT_THEME.id) {
 
     case 'section-header':
       // Section Header (centered section title with background)
-      slide.background = '#F3F4F6';
+      slide.background = themeConfig.slideBackground || '#F3F4F6';
       slide.elements.push({
         id: uid('shape'),
         type: 'rect',
@@ -1851,12 +1851,6 @@ function Toolbar({
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  const backgroundColorOptions = [
-    '#FFFFFF', '#F3E8FF', '#E0F2FE', '#FCE7F3',
-    '#A78BFA', '#8B5CF6', '#38BDF8', '#1E3A8A',
-    '#111827', '#F97316', '#10B981', '#F9A8D4'
-  ];
-
   const renderFileTab = () => (
     <div className="toolbar-group file-toolbar-group">
       <div className="tool-section">
@@ -1943,7 +1937,7 @@ function Toolbar({
         <label className="section-label">Shapes</label>
         <button onClick={() => onAddShape('rect')} title="Insert rectangle">Rectangle</button>
         <button onClick={() => onAddShape('circle')} title="Insert circle">Circle</button>
-        <button onClick={() => onAddShape('line')} title="Insert line">Line</button>
+        <button onClick={() => onAddShape('triangle')} title="Insert triangle">Triangle</button>
       </div>
     </div>
   );
@@ -2045,6 +2039,13 @@ function Toolbar({
                   <path d="M16 14l-4 4-4-4" />
                   <path d="M12 10v8" />
                   <path d="M4 18h16" />
+                </svg>
+              </button>
+              <button onClick={onLoad} title="Open saved presentation" className="ribbon-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4" />
+                  <path d="M17 8l-5-5-5 5" />
+                  <path d="M12 3v12" />
                 </svg>
               </button>
             </div>
@@ -2212,7 +2213,7 @@ function Toolbar({
                           padding: '8px',
                           marginBottom: '8px'
                         }}>
-                          <div style={{ width: '60%', height: '12px', backgroundColor: '#4f46e5', borderRadius: '2px', marginBottom: '6px' }}></div>
+                          <div style={{ width: '60%', height: '12px', backgroundColor: 'rgb(170 138 255)', borderRadius: '2px', marginBottom: '6px' }}></div>
                           <div style={{ width: '40%', height: '8px', backgroundColor: '#cbd5e1', borderRadius: '2px' }}></div>
                         </div>
                         <span style={{ fontSize: '12px', color: '#4a5568' }}>Title</span>
@@ -2231,7 +2232,7 @@ function Toolbar({
                           padding: '8px',
                           marginBottom: '8px'
                         }}>
-                          <div style={{ width: '60%', height: '10px', backgroundColor: '#4f46e5', borderRadius: '2px', marginBottom: '8px' }}></div>
+                          <div style={{ width: '60%', height: '10px', backgroundColor: 'rgb(170 138 255)', borderRadius: '2px', marginBottom: '8px' }}></div>
                           <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px', marginBottom: '4px' }}></div>
                           <div style={{ width: '90%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px', marginBottom: '4px' }}></div>
                           <div style={{ width: '80%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px' }}></div>
@@ -2257,7 +2258,7 @@ function Toolbar({
                           marginBottom: '8px'
                         }}>
                           <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>SECTION</div>
-                          <div style={{ width: '70%', height: '10px', backgroundColor: '#4f46e5', borderRadius: '2px' }}></div>
+                          <div style={{ width: '70%', height: '10px', backgroundColor: 'rgb(170 138 255)', borderRadius: '2px' }}></div>
                         </div>
                         <span style={{ fontSize: '12px', color: '#4a5568' }}>Section Header</span>
                       </div>
@@ -2277,7 +2278,7 @@ function Toolbar({
                           display: 'flex',
                           flexDirection: 'column'
                         }}>
-                          <div style={{ width: '50%', height: '8px', backgroundColor: '#4f46e5', borderRadius: '2px', marginBottom: '8px' }}></div>
+                          <div style={{ width: '50%', height: '8px', backgroundColor: 'rgb(170 138 255)', borderRadius: '2px', marginBottom: '8px' }}></div>
                           <div style={{ display: 'flex', flex: 1, gap: '8px' }}>
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '2px' }}></div>
@@ -2308,7 +2309,7 @@ function Toolbar({
                           display: 'flex',
                           flexDirection: 'column'
                         }}>
-                          <div style={{ width: '60%', height: '8px', backgroundColor: '#4f46e5', borderRadius: '2px', marginBottom: '12px' }}></div>
+                          <div style={{ width: '60%', height: '8px', backgroundColor: 'rgb(170 138 255)', borderRadius: '2px', marginBottom: '12px' }}></div>
                           <div style={{ display: 'flex', flex: 1, gap: '12px' }}>
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                               <div style={{ fontSize: '8px', color: '#94a3b8', alignSelf: 'flex-start' }}>COMPARISON</div>
@@ -2352,107 +2353,19 @@ function Toolbar({
                 )}
               </div>
               <div style={{ position: 'relative' }}>
-                <button
-                  ref={backgroundButtonRef}
-                  type="button"
-                  className="ribbon-btn"
-                  title="Background color"
-                  onClick={() => {
-                    setShowBackgroundMenu(prev => !prev);
-                    setShowShapesMenu(false);
-                    setShowChartsMenu(false);
-                    setShowCustomColorPicker(false);
-                  }}
-                >
+                <label className="ribbon-btn ribbon-btn--color-picker" title="Background color" ref={backgroundButtonRef}>
+                  <input
+                    type="color"
+                    value={resolvedBackground}
+                    onChange={(e) => onChangeBackground?.(e.target.value)}
+                    aria-label="Slide background color"
+                  />
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="4" width="18" height="14" rx="2" ry="2"/>
                     <path d="M3 10h18"/>
                     <path d="M10 15l2 2 4-4"/>
                   </svg>
-                </button>
-                {showBackgroundMenu && (
-                  <div
-                    className="ribbon-dropdown-menu"
-                    style={{
-                      top: `${(backgroundButtonRef.current?.getBoundingClientRect().bottom || 0) + window.scrollY}px`,
-                      left: `${(backgroundButtonRef.current?.getBoundingClientRect().left || 0) + (backgroundButtonRef.current?.getBoundingClientRect().width || 0) / 2 + window.scrollX}px`,
-                      transform: 'translateX(-50%)',
-                      padding: '10px 12px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px'
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(4, 28px)',
-                        gap: '8px'
-                      }}
-                    >
-                      {backgroundColorOptions.map((color) => (
-                        <button
-                          key={color}
-                          onClick={() => {
-                            onChangeBackground?.(color);
-                            setShowBackgroundMenu(false);
-                            setShowCustomColorPicker(false);
-                          }}
-                          className="ribbon-color-swatch"
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '6px',
-                            border: color.toLowerCase() === (resolvedBackground || '').toLowerCase() ? '2px solid rgba(139,92,246,0.8)' : '1px solid rgba(148, 163, 184, 0.4)',
-                            background: color,
-                            cursor: 'pointer',
-                            padding: 0
-                          }}
-                          title={color}
-                        />
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => {
-                        setShowCustomColorPicker(prev => !prev);
-                      }}
-                      className="ribbon-dropdown-item"
-                      type="button"
-                    >
-                      More colors…
-                    </button>
-                    {showCustomColorPicker && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          padding: '4px 6px',
-                          borderRadius: '8px',
-                          background: 'rgba(255,255,255,0.6)',
-                          boxShadow: 'inset 0 0 0 1px rgba(148,163,184,0.35)'
-                        }}
-                      >
-                        <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>Custom:</span>
-                        <input
-                          type="color"
-                          value={resolvedBackground}
-                          onChange={(e) => onChangeBackground?.(e.target.value)}
-                          title="Background color"
-                          aria-label="Slide background color"
-                          style={{
-                            width: '36px',
-                            height: '24px',
-                            border: 'none',
-                            background: 'transparent',
-                            padding: 0,
-                            cursor: 'pointer'
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
+                </label>
               </div>
             </div>
           </div>
@@ -2537,13 +2450,13 @@ function Toolbar({
                       <span>Circle</span>
                     </button>
                     <button 
-                      onClick={() => { onAddShape('line'); setShowShapesMenu(false); }}
+                      onClick={() => { onAddShape('triangle'); setShowShapesMenu(false); }}
                       className="ribbon-dropdown-item"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <polygon points="12 4 20 20 4 20"/>
                       </svg>
-                      <span>Line</span>
+                      <span>Triangle</span>
                     </button>
                   </div>
                 )}
@@ -2891,35 +2804,16 @@ function SlideThumb({
 
     if (el.type === 'shape') {
       return (
-        <div key={el.id} style={style} className="thumb-shape-el">
+        <div key={el.id} style={{ ...style, overflow: 'visible' }} className="thumb-shape-el">
           <div
             style={{
-              width: '100%',
-              height: '100%',
-              background: el.fill || '#3b82f6',
-              border: `1px solid ${el.stroke || 'rgba(15,23,42,0.35)'}`,
-              borderRadius: el.shapeType === 'circle' ? '50%' : '6px',
-              boxShadow: '0 2px 6px rgba(15, 23, 42, 0.16)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative',
-              overflow: 'hidden',
+              width: el.w,
+              height: el.h,
+              transform: `scale(${thumbScale})`,
+              transformOrigin: 'top left',
             }}
           >
-            {/* Add subtle inner highlight for professional look */}
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '50%',
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%)',
-                borderRadius: el.shapeType === 'circle' ? '50%' : '6px',
-                pointerEvents: 'none',
-              }}
-            />
+            <ShapeElement element={el} scale={1} />
           </div>
         </div>
       );
@@ -3274,8 +3168,18 @@ function FloatingTextToolbar({ element, draggingElementId, onStyleChange, onAppl
     // Ensure the toolbar stays within the canvas bounds
     top = Math.max(minTop, Math.min(top, maxBottom));
 
-    let left = rect.left + rect.width / 2 - toolbarRect.width / 2;
-    left = Math.max(canvasRect.left + 8, Math.min(left, canvasRect.right - toolbarRect.width - 8));
+    const availableWidth = canvasRect.width - 16;
+    const isOverflowing = toolbarRect.width > availableWidth;
+    let left;
+    if (isOverflowing) {
+      const viewportCenter = (window.innerWidth - toolbarRect.width) / 2;
+      left = Math.max(8, viewportCenter);
+    } else {
+      const targetLeft = rect.left + rect.width / 2 - toolbarRect.width / 2;
+      const minLeft = canvasRect.left + 8;
+      const maxLeft = canvasRect.right - toolbarRect.width - 8;
+      left = Math.max(minLeft, Math.min(targetLeft, maxLeft));
+    }
 
     setPosition(prev => {
       if (Math.abs(prev.top - top) < 0.5 && Math.abs(prev.left - left) < 0.5) return prev;
@@ -3399,6 +3303,7 @@ function FloatingTextToolbar({ element, draggingElementId, onStyleChange, onAppl
   };
 
   const spacingOptions = [1, 1.2, 1.5, 1.75, 2];
+  const hasBorder = Number.isFinite(styles.borderWidth) && styles.borderWidth > 0 && styles.borderColor;
 
   return (
     <div
@@ -3624,10 +3529,13 @@ function FloatingTextToolbar({ element, draggingElementId, onStyleChange, onAppl
         value={styles.borderColor}
         fallback="#000000"
         onChange={(color) => onStyleChange('borderColor', color)}
-        onReset={() => onStyleChange('borderColor', null)}
+        onReset={() => {
+          onStyleChange('borderColor', null);
+          onStyleChange('borderWidth', 0);
+        }}
       />
 
-      <div className="toolbar-number-control" title="Border width">
+      <div className="toolbar-number-control" title="Border width" data-active={hasBorder ? 'true' : 'false'}>
         <span className="toolbar-number-control__icon" aria-hidden="true">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <rect x="2.2" y="3.2" width="11.6" height="9.6" rx="2.4" stroke="currentColor" strokeWidth="1.4" />
@@ -3649,6 +3557,19 @@ function FloatingTextToolbar({ element, draggingElementId, onStyleChange, onAppl
           }}
           aria-label="Border width"
         />
+        <button
+          type="button"
+          className="toolbar-number-control__clear"
+          onClick={() => {
+            onStyleChange('borderWidth', 0);
+            onStyleChange('borderColor', null);
+          }}
+          disabled={!hasBorder}
+          title="Remove border"
+          aria-label="Remove border"
+        >
+          ✕
+        </button>
       </div>
 
       <div className="toolbar-divider" />
@@ -4321,11 +4242,30 @@ function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChang
     };
   }, []);
 
+  // Calculate the scaled dimensions
+  const scaledWidth = CANVAS_BASE_WIDTH * effectiveScale;
+  const scaledHeight = CANVAS_BASE_HEIGHT * effectiveScale;
+
   const viewportStyle = {
     width: CANVAS_BASE_WIDTH,
     height: CANVAS_BASE_HEIGHT,
     transform: `scale(${effectiveScale})`,
     transformOrigin: 'center center',
+    position: 'relative',
+    display: 'inline-block',
+    margin: 'auto',
+  };
+
+  const frameStyle = {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+    padding: '20px',
+    boxSizing: 'border-box',
+    minWidth: `${scaledWidth}px`,
+    minHeight: `${scaledHeight}px`,
   };
 
   const canvasStyle = {
@@ -4360,10 +4300,39 @@ function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChang
     }
   }, [isPresenting, onSelect]);
 
+  const ensureInitialListContent = useCallback((element) => {
+    if (!element || element.type !== 'text') return;
+    const listStyle = element.styles?.listStyle;
+    if (!listStyle || (element.content && element.content.trim())) return;
+    if (listStyle !== 'bullet' && listStyle !== 'number') return;
+
+    const seed = listStyle === 'bullet' ? '• ' : '1. ';
+    const textareaNode = textareaRefs.current[element.id];
+    if (!textareaNode) return;
+
+    textareaNode.value = seed;
+    const newHeight = measureTextareaHeight(textareaNode, element.styles);
+    onChangeText(element.id, seed, newHeight);
+
+    const placeCursor = () => {
+      const node = textareaRefs.current[element.id] || textareaNode;
+      if (node) {
+        node.selectionStart = node.selectionEnd = seed.length;
+      }
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(placeCursor);
+    } else {
+      setTimeout(placeCursor, 0);
+    }
+  }, [onChangeText]);
+
   return (
     <div className="canvas-wrapper" ref={wrapperRef}>
-      <div className="canvas-viewport" style={viewportStyle}>
-        <div className="canvas" style={canvasStyle} onPointerDown={handleCanvasPointerDown}>
+      <div className="canvas-frame" style={frameStyle}>
+        <div className="canvas-viewport" style={viewportStyle}>
+          <div className="canvas" style={canvasStyle} onPointerDown={handleCanvasPointerDown}>
           {slide.elements.map(el => {
           const isDragging = draggingElementId === el.id;
           const style = {
@@ -4457,6 +4426,7 @@ function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChang
                       e.target.blur();
                       return;
                     }
+                    ensureInitialListContent(el);
                     e.stopPropagation();
                     // Ensure the text element is selected when the textarea gets focus
                     if (!selected) {
@@ -4533,10 +4503,11 @@ function Canvas({ slide, selectedElementId, draggingElementId, onSelect, onChang
           }
             return null;
           })}
-          <div
-            className="canvas-overlay"
-            onClick={isPresenting ? undefined : () => onSelect(null)}
-          />
+            <div
+              className="canvas-overlay"
+              onClick={isPresenting ? undefined : () => onSelect(null)}
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -5702,16 +5673,38 @@ function App() {
 
   function onSave() {
     try {
+      const nowIso = new Date().toISOString();
+      let presentationId = presentation.id;
+      if (!presentationId) {
+        presentationId = 'ppt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      }
+      const normalizedSnapshot = normalizePresentation(
+        {
+          ...presentation,
+          id: presentationId,
+          name: presentation.name || '📄 Untitled',
+          createdAt: presentation.createdAt || nowIso,
+          updatedAt: nowIso,
+        },
+        { fallbackId: presentationId }
+      );
+      try {
+        localStorage.setItem(`presentation_${presentationId}`, JSON.stringify(normalizedSnapshot));
+      } catch (storageErr) {
+        console.warn('Failed to cache presentation locally:', storageErr);
+      }
+      setPresentation((prev) => ({
+        ...prev,
+        id: presentationId,
+        createdAt: prev.createdAt || nowIso,
+        updatedAt: nowIso,
+      }));
+
       const PptxConstructor = resolvePptxGen();
       if (typeof PptxConstructor !== 'function') {
         // Fallback to JSON export if PptxGenJS is not available
         console.warn('PptxGenJS not available, falling back to JSON export');
-        const presentationData = {
-          ...presentation,
-          name: presentation.name || '📄 Untitled',
-          createdAt: new Date().toISOString(),
-          version: '1.0'
-        };
+        const presentationData = { ...normalizedSnapshot, version: '1.0' };
         
         const dataStr = JSON.stringify(presentationData, null, 2);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
